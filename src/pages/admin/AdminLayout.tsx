@@ -11,7 +11,8 @@ import {
   LogOut,
   Loader2,
   Shield,
-  Building2
+  Building2,
+  Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ interface AdminLayoutProps {
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/territories', label: 'Territórios', icon: MapPin },
+  { href: '/admin/regions', label: 'Regiões', icon: Globe },
   { href: '/admin/cities', label: 'Cidades', icon: Building2 },
   { href: '/admin/tokens', label: 'Tokens', icon: Coins },
   { href: '/admin/events', label: 'Eventos', icon: CalendarDays },
