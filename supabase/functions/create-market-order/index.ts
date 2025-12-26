@@ -202,15 +202,44 @@ Deno.serve(async (req) => {
 
     console.log(`[create-market-order] Created listing ${newListing.id}`);
 
-    // Try to match orders
-    const matchResult = await matchOrders(supabase, newListing);
+    // Use atomic matching function to prevent race conditions
+    // This function uses row-level locking (FOR UPDATE SKIP LOCKED) for thread safety
+    const { data: matchResult, error: matchError } = await supabase.rpc('match_market_order', {
+      p_listing_id: newListing.id,
+      p_seller_user_id: user.id,
+      p_seller_territory_id: territory_id || null,
+      p_listing_type: listing_type,
+      p_resource_type: resource_type,
+      p_price_per_unit: price_per_unit,
+      p_quantity: quantity,
+      p_filled_quantity: 0,
+    });
+
+    if (matchError) {
+      console.error('[create-market-order] Matching error:', matchError);
+      // Listing was created, but matching failed - return success with warning
+      return new Response(JSON.stringify({ 
+        success: true, 
+        listing: newListing,
+        trades_executed: 0,
+        message: 'Ordem criada, mas a correspondência automática falhou. Sua ordem está ativa.',
+        warning: matchError.message
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const tradesExecuted = matchResult?.[0]?.trades_executed || 0;
+
+    console.log(`[create-market-order] Matching complete: ${tradesExecuted} trades executed`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       listing: newListing,
-      trades_executed: matchResult.tradesExecuted,
-      message: matchResult.tradesExecuted > 0 
-        ? `Ordem criada e ${matchResult.tradesExecuted} trade(s) executado(s)!`
+      trades_executed: tradesExecuted,
+      message: tradesExecuted > 0 
+        ? `Ordem criada e ${tradesExecuted} trade(s) executado(s)!`
         : 'Ordem criada com sucesso!'
     }), {
       status: 200,
@@ -224,176 +253,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-
-async function matchOrders(supabase: any, newListing: any) {
-  const { listing_type, resource_type, price_per_unit, quantity, id: listingId, seller_user_id, seller_territory_id } = newListing;
-  
-  let tradesExecuted = 0;
-  let remainingQuantity = quantity - (newListing.filled_quantity || 0);
-
-  // Find matching orders
-  // If we're selling, look for buy orders at >= our price
-  // If we're buying, look for sell orders at <= our price
-  const oppositeType = listing_type === 'sell' ? 'buy' : 'sell';
-  const priceCondition = listing_type === 'sell' ? 'gte' : 'lte';
-
-  let query = supabase
-    .from('market_listings')
-    .select('*')
-    .eq('resource_type', resource_type)
-    .eq('listing_type', oppositeType)
-    .in('status', ['open', 'partially_filled'])
-    .neq('seller_user_id', seller_user_id); // Can't trade with yourself
-
-  if (priceCondition === 'gte') {
-    query = query.gte('price_per_unit', price_per_unit);
-  } else {
-    query = query.lte('price_per_unit', price_per_unit);
-  }
-
-  // Order by best price first
-  query = query.order('price_per_unit', { ascending: listing_type === 'buy' });
-
-  const { data: matchingOrders, error } = await query;
-
-  if (error || !matchingOrders?.length) {
-    console.log('[matchOrders] No matching orders found');
-    return { tradesExecuted: 0 };
-  }
-
-  console.log(`[matchOrders] Found ${matchingOrders.length} matching orders`);
-
-  for (const matchOrder of matchingOrders) {
-    if (remainingQuantity <= 0) break;
-
-    const matchRemaining = Number(matchOrder.quantity) - Number(matchOrder.filled_quantity);
-    const tradeQuantity = Math.min(remainingQuantity, matchRemaining);
-    const tradePrice = matchOrder.price_per_unit; // Use the older order's price
-
-    if (tradeQuantity <= 0) continue;
-
-    // Determine buyer and seller
-    const isSelling = listing_type === 'sell';
-    const buyerUserId = isSelling ? matchOrder.seller_user_id : seller_user_id;
-    const buyerTerritoryId = isSelling ? matchOrder.seller_territory_id : seller_territory_id;
-    const sellerUserId = isSelling ? seller_user_id : matchOrder.seller_user_id;
-    const sellerTerritoryId = isSelling ? seller_territory_id : matchOrder.seller_territory_id;
-
-    const totalPrice = tradeQuantity * tradePrice;
-
-    console.log(`[matchOrders] Executing trade: ${tradeQuantity} ${resource_type} at ${tradePrice} each`);
-
-    try {
-      // Transfer currency to seller (seller already locked their goods)
-      // The buyer already locked their currency when creating the buy order
-      // So we just transfer from the locked amount
-      const { data: sellerWallet } = await supabase
-        .from('player_wallets')
-        .select('balance')
-        .eq('user_id', sellerUserId)
-        .single();
-
-      await supabase
-        .from('player_wallets')
-        .update({ 
-          balance: Number(sellerWallet.balance) + totalPrice,
-          total_earned: (sellerWallet.total_earned || 0) + totalPrice
-        })
-        .eq('user_id', sellerUserId);
-
-      // Transfer resource/token to buyer
-      const isToken = resource_type.startsWith('token_');
-      
-      if (isToken) {
-        const tokenType = resource_type.replace('token_', '');
-        const tokenField = `${tokenType}_tokens`;
-        
-        const { data: buyerTokens } = await supabase
-          .from('user_tokens')
-          .select('*')
-          .eq('user_id', buyerUserId)
-          .single();
-
-        await supabase
-          .from('user_tokens')
-          .update({ [tokenField]: Number(buyerTokens[tokenField]) + tradeQuantity })
-          .eq('user_id', buyerUserId);
-      } else if (buyerTerritoryId) {
-        const { data: buyerResources } = await supabase
-          .from('resource_balances')
-          .select('*')
-          .eq('territory_id', buyerTerritoryId)
-          .maybeSingle();
-
-        if (buyerResources) {
-          await supabase
-            .from('resource_balances')
-            .update({ [resource_type]: Number(buyerResources[resource_type]) + tradeQuantity })
-            .eq('territory_id', buyerTerritoryId);
-        }
-      }
-
-      // Update both listings
-      const newFilledQuantity = Number(newListing.filled_quantity || 0) + tradeQuantity;
-      const newStatus = newFilledQuantity >= quantity ? 'filled' : 'partially_filled';
-      
-      await supabase
-        .from('market_listings')
-        .update({ 
-          filled_quantity: newFilledQuantity,
-          status: newStatus
-        })
-        .eq('id', listingId);
-
-      const matchFilledQuantity = Number(matchOrder.filled_quantity) + tradeQuantity;
-      const matchStatus = matchFilledQuantity >= matchOrder.quantity ? 'filled' : 'partially_filled';
-      
-      await supabase
-        .from('market_listings')
-        .update({
-          filled_quantity: matchFilledQuantity,
-          status: matchStatus
-        })
-        .eq('id', matchOrder.id);
-
-      // Record trade history
-      await supabase
-        .from('trade_history')
-        .insert({
-          listing_id: listingId,
-          buyer_user_id: buyerUserId,
-          buyer_territory_id: buyerTerritoryId,
-          seller_user_id: sellerUserId,
-          seller_territory_id: sellerTerritoryId,
-          resource_type,
-          quantity: tradeQuantity,
-          price_per_unit: tradePrice,
-          total_price: totalPrice,
-        });
-
-      remainingQuantity -= tradeQuantity;
-      tradesExecuted++;
-
-      // Refund excess currency if buy order price was higher than matched sell price
-      if (!isSelling && tradePrice < price_per_unit) {
-        const refund = (price_per_unit - tradePrice) * tradeQuantity;
-        const { data: buyerWallet } = await supabase
-          .from('player_wallets')
-          .select('balance')
-          .eq('user_id', buyerUserId)
-          .single();
-
-        await supabase
-          .from('player_wallets')
-          .update({ balance: Number(buyerWallet.balance) + refund })
-          .eq('user_id', buyerUserId);
-      }
-
-      console.log(`[matchOrders] Trade executed successfully`);
-    } catch (tradeError) {
-      console.error('[matchOrders] Trade execution error:', tradeError);
-    }
-  }
-
-  return { tradesExecuted };
-}
