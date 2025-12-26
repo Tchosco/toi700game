@@ -467,6 +467,178 @@ Deno.serve(async (req) => {
       eventsGenerated++;
     }
 
+    // 8. Process active wars
+    let warsProcessed = 0;
+    const { data: activeWars, error: warsError } = await supabase
+      .from('wars')
+      .select('*, attacker:territories!wars_attacker_id_fkey(*), defender:territories!wars_defender_id_fkey(*)')
+      .in('status', ['declared', 'active']);
+
+    if (!warsError && activeWars) {
+      for (const war of activeWars) {
+        const attacker = war.attacker as Territory;
+        const defender = war.defender as Territory;
+
+        if (!attacker || !defender) continue;
+
+        // Calculate military power
+        // Based on: cities, stability, tech spending, PI (influence)
+        const attackerCities = citiesByTerritory.get(attacker.id)?.length || 0;
+        const defenderCities = citiesByTerritory.get(defender.id)?.length || 0;
+
+        const attackerResources = resourceMap.get(attacker.id);
+        const defenderResources = resourceMap.get(defender.id);
+
+        // Power formula: cities * 10 + stability * 0.5 + tech * 2 + PI * 0.3 + random factor
+        const attackerPower = Math.floor(
+          (attackerCities * 10) +
+          (attacker.stability * 0.5) +
+          ((attackerResources?.tech || 0) * 2) +
+          ((attacker as any).pi_points || 0) * 0.3 +
+          (Math.random() * 20)
+        );
+
+        const defenderPower = Math.floor(
+          (defenderCities * 10) +
+          (defender.stability * 0.5) +
+          ((defenderResources?.tech || 0) * 2) +
+          ((defender as any).pi_points || 0) * 0.3 +
+          (Math.random() * 20) +
+          10 // Defender bonus
+        );
+
+        // Determine round winner
+        const attackerWins = attackerPower > defenderPower;
+        const pointsGained = Math.abs(attackerPower - defenderPower);
+
+        // Update war scores
+        const newAttackerScore = war.attacker_war_score + (attackerWins ? pointsGained : 0);
+        const newDefenderScore = war.defender_war_score + (!attackerWins ? pointsGained : 0);
+        const newCycles = war.cycles_elapsed + 1;
+
+        // Log war turn
+        await supabase
+          .from('war_turn_logs')
+          .insert({
+            war_id: war.id,
+            tick_number: newTickNumber,
+            attacker_power: attackerPower,
+            defender_power: defenderPower,
+            result_summary: `${attackerWins ? attacker.name : defender.name} venceu o turno (+${pointsGained} pontos)`,
+          });
+
+        // Check victory conditions
+        const victoryThreshold = 100;
+        const stabilityDefeat = 10;
+        let warEnded = false;
+        let winnerId: string | null = null;
+        let cellsToTransfer = 0;
+
+        if (newAttackerScore >= victoryThreshold) {
+          warEnded = true;
+          winnerId = attacker.id;
+          cellsToTransfer = (war.target_cells as string[])?.length || 0;
+        } else if (newDefenderScore >= victoryThreshold) {
+          warEnded = true;
+          winnerId = defender.id;
+          cellsToTransfer = 0; // Defender keeps their cells
+        } else if (defender.stability < stabilityDefeat) {
+          warEnded = true;
+          winnerId = attacker.id;
+          cellsToTransfer = Math.ceil(((war.target_cells as string[])?.length || 0) * 0.5); // Partial victory
+        } else if (newCycles >= war.max_cycles) {
+          // War ends by timeout - winner is whoever has higher score
+          warEnded = true;
+          winnerId = newAttackerScore > newDefenderScore ? attacker.id : defender.id;
+          cellsToTransfer = winnerId === attacker.id 
+            ? Math.ceil(((war.target_cells as string[])?.length || 0) * (newAttackerScore / (newAttackerScore + newDefenderScore)))
+            : 0;
+        }
+
+        if (warEnded) {
+          // Transfer cells to winner
+          const targetCells = war.target_cells as string[] || [];
+          const cellsToActuallyTransfer = winnerId === attacker.id ? targetCells.slice(0, cellsToTransfer) : [];
+
+          for (const cellId of cellsToActuallyTransfer) {
+            await supabase
+              .from('cells')
+              .update({ owner_territory_id: winnerId })
+              .eq('id', cellId);
+
+            await supabase
+              .from('territory_transfers')
+              .insert({
+                cell_id: cellId,
+                from_territory_id: defender.id,
+                to_territory_id: winnerId,
+                war_id: war.id,
+                transfer_type: 'war_victory',
+              });
+          }
+
+          // Apply stability penalties
+          await supabase
+            .from('territories')
+            .update({ stability: Math.max(0, attacker.stability - 15) })
+            .eq('id', attacker.id);
+
+          await supabase
+            .from('territories')
+            .update({ stability: Math.max(0, defender.stability - 20) })
+            .eq('id', defender.id);
+
+          // End war
+          await supabase
+            .from('wars')
+            .update({
+              status: 'ended',
+              winner_id: winnerId,
+              attacker_war_score: newAttackerScore,
+              defender_war_score: newDefenderScore,
+              cycles_elapsed: newCycles,
+              ended_at: new Date().toISOString(),
+            })
+            .eq('id', war.id);
+
+          // Log event
+          const winnerName = winnerId === attacker.id ? attacker.name : defender.name;
+          await supabase
+            .from('event_logs')
+            .insert({
+              tick_log_id: tickLog.id,
+              territory_id: winnerId,
+              event_type: 'war_ended',
+              title: 'Guerra Encerrada',
+              description: `${winnerName} venceu a guerra! ${cellsToActuallyTransfer.length} célula(s) transferida(s).`,
+              effects: { 
+                winner_id: winnerId, 
+                cells_transferred: cellsToActuallyTransfer.length,
+                final_score: `${newAttackerScore} vs ${newDefenderScore}`
+              },
+            });
+
+          eventsGenerated++;
+        } else {
+          // Update ongoing war
+          await supabase
+            .from('wars')
+            .update({
+              status: 'active',
+              attacker_war_score: newAttackerScore,
+              defender_war_score: newDefenderScore,
+              cycles_elapsed: newCycles,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', war.id);
+        }
+
+        warsProcessed++;
+      }
+    }
+
+    console.log(`Wars processed: ${warsProcessed}`);
+
     // 8. Update world config
     await supabase
       .from('world_config')
