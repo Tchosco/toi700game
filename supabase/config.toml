@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.cancel-market-order]
 verify_jwt = false
+
+[functions.sell-cell]
+verify_jwt = false
+
+[functions.execute-trade-deal]
+verify_jwt = false
+
+[functions.declare-war]
+verify_jwt = false
