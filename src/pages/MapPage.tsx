@@ -2,11 +2,16 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { mockCities, mockTerritories, regions } from '@/lib/data';
-import { Map, Globe, Building2, Users } from 'lucide-react';
+import { Map, Building2, Users, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import toi700Map from '@/assets/toi-700-map.png';
 
 export default function MapPage() {
   const mapVersion = 'v1.0';
+  const [zoom, setZoom] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const regionStats = regions.map(region => {
     const citiesInRegion = mockCities.filter(c => c.region === region);
@@ -20,6 +25,10 @@ export default function MapPage() {
       territories: territoriesInRegion,
     };
   });
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.5));
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
   return (
     <Layout>
@@ -41,18 +50,40 @@ export default function MapPage() {
           </Badge>
         </div>
 
-        {/* Map Placeholder */}
-        <Card className="glass-card mb-12">
-          <CardContent className="p-0">
-            <div className="aspect-video md:aspect-[21/9] rounded-lg bg-gradient-to-br from-muted/50 via-muted/30 to-muted/50 flex flex-col items-center justify-center border border-border/50 relative overflow-hidden">
-              <div className="absolute inset-0 star-field opacity-30" />
-              <Globe className="w-20 h-20 text-primary/30 mb-4 animate-float" />
-              <p className="text-muted-foreground text-center px-4">
-                O mapa do planeta será exibido aqui após upload da imagem oficial (Azgaar)
-              </p>
-              <p className="text-xs text-muted-foreground/60 mt-2">
-                Formatos aceitos: PNG, JPG, SVG
-              </p>
+        {/* Map Display */}
+        <Card className={`glass-card mb-12 ${isFullscreen ? 'fixed inset-4 z-50 m-0' : ''}`}>
+          <CardContent className="p-0 relative">
+            {/* Zoom Controls */}
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <Button size="icon" variant="secondary" onClick={handleZoomOut} className="h-8 w-8">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="secondary" onClick={handleZoomIn} className="h-8 w-8">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="secondary" onClick={toggleFullscreen} className="h-8 w-8">
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Map Container */}
+            <div className={`overflow-auto rounded-lg border border-border/50 bg-[#4a4a8a] ${isFullscreen ? 'h-full' : 'max-h-[70vh]'}`}>
+              <div 
+                className="transition-transform duration-200 origin-top-left"
+                style={{ transform: `scale(${zoom})`, minWidth: 'fit-content' }}
+              >
+                <img 
+                  src={toi700Map} 
+                  alt="Mapa Oficial de TOI-700" 
+                  className="w-full h-auto"
+                  draggable={false}
+                />
+              </div>
+            </div>
+            
+            {/* Zoom indicator */}
+            <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-xs text-muted-foreground">
+              Zoom: {Math.round(zoom * 100)}%
             </div>
           </CardContent>
         </Card>
