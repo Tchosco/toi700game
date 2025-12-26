@@ -117,6 +117,11 @@ export type Database = {
           owner_territory_id: string | null
           population_density: number
           region_id: string | null
+          resource_energy: number
+          resource_food: number
+          resource_influence: number
+          resource_minerals: number
+          resource_tech: number
           rural_focus: string | null
           rural_population: number
           status: Database["public"]["Enums"]["cell_status"]
@@ -144,6 +149,11 @@ export type Database = {
           owner_territory_id?: string | null
           population_density?: number
           region_id?: string | null
+          resource_energy?: number
+          resource_food?: number
+          resource_influence?: number
+          resource_minerals?: number
+          resource_tech?: number
           rural_focus?: string | null
           rural_population?: number
           status?: Database["public"]["Enums"]["cell_status"]
@@ -171,6 +181,11 @@ export type Database = {
           owner_territory_id?: string | null
           population_density?: number
           region_id?: string | null
+          resource_energy?: number
+          resource_food?: number
+          resource_influence?: number
+          resource_minerals?: number
+          resource_tech?: number
           rural_focus?: string | null
           rural_population?: number
           status?: Database["public"]["Enums"]["cell_status"]
@@ -2799,6 +2814,10 @@ export type Database = {
           p_to_user_id: string
         }
         Returns: Json
+      }
+      generate_populated_cells: {
+        Args: { p_num_cells?: number; p_region_id: string }
+        Returns: number
       }
       generate_region_cells: {
         Args: { p_num_cells?: number; p_region_id: string }

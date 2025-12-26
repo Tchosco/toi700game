@@ -168,6 +168,48 @@ export default function CellDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Resources */}
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wheat className="h-5 w-5" />
+                Recursos da Célula
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Wheat className="h-4 w-4 text-green-500" /> Alimentos
+                </span>
+                <span className="font-mono">{(cell as any).resource_food || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Zap className="h-4 w-4 text-yellow-500" /> Energia
+                </span>
+                <span className="font-mono">{(cell as any).resource_energy || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Pickaxe className="h-4 w-4 text-amber-500" /> Minerais
+                </span>
+                <span className="font-mono">{(cell as any).resource_minerals || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <FlaskConical className="h-4 w-4 text-purple-500" /> Tecnologia
+                </span>
+                <span className="font-mono">{(cell as any).resource_tech || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Building2 className="h-4 w-4 text-blue-500" /> Influência
+                </span>
+                <span className="font-mono">{(cell as any).resource_influence || 0}</span>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Cities */}
           <Card className="bg-card/50 border-border/50">
             <CardHeader>
@@ -194,21 +236,23 @@ export default function CellDetailPage() {
               )}
             </CardContent>
           </Card>
+        </div>
 
-          {/* Focus */}
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader>
-              <CardTitle>Foco Produtivo</CardTitle>
-              <CardDescription>
-                {isOwner ? 'Alterar o foco custa estabilidade temporária' : 'Apenas o dono pode alterar'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {hasPenalty && (
-                <Badge variant="destructive" className="w-full justify-center">
-                  Penalidade ativa até {new Date(cell.focus_penalty_until!).toLocaleString('pt-BR')}
-                </Badge>
-              )}
+        {/* Focus Card - Full Width */}
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader>
+            <CardTitle>Foco Produtivo</CardTitle>
+            <CardDescription>
+              {isOwner ? 'Alterar o foco custa estabilidade temporária' : 'Apenas o dono pode alterar'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {hasPenalty && (
+              <Badge variant="destructive" className="mb-4">
+                Penalidade ativa até {new Date(cell.focus_penalty_until!).toLocaleString('pt-BR')}
+              </Badge>
+            )}
+            <div className="grid md:grid-cols-3 gap-3">
               {focuses.map(focus => {
                 const Icon = focus.icon;
                 const isActive = currentFocus === focus.value;
@@ -217,7 +261,7 @@ export default function CellDetailPage() {
                     key={focus.value}
                     disabled={!isOwner || changeFocusMutation.isPending}
                     onClick={() => changeFocusMutation.mutate({ focus: focus.value, type: isUrban ? 'urban' : 'rural' })}
-                    className={`w-full p-3 rounded-lg border text-left transition-all ${
+                    className={`p-4 rounded-lg border text-left transition-all ${
                       isActive 
                         ? 'border-primary bg-primary/10' 
                         : 'border-border/50 hover:border-primary/50'
@@ -234,9 +278,9 @@ export default function CellDetailPage() {
                   </button>
                 );
               })}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );
