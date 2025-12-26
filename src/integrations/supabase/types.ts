@@ -14,16 +14,397 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cities: {
+        Row: {
+          created_at: string
+          id: string
+          is_neutral: boolean
+          name: string
+          owner_territory_id: string | null
+          region_id: string | null
+          status: Database["public"]["Enums"]["city_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_neutral?: boolean
+          name: string
+          owner_territory_id?: string | null
+          region_id?: string | null
+          status?: Database["public"]["Enums"]["city_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_neutral?: boolean
+          name?: string
+          owner_territory_id?: string | null
+          region_id?: string | null
+          status?: Database["public"]["Enums"]["city_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cities_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cities_territory"
+            columns: ["owner_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planetary_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          event_type: Database["public"]["Enums"]["event_type"]
+          id: string
+          is_active: boolean
+          pd_reward: number
+          pi_reward: number
+          region_id: string | null
+          start_date: string | null
+          title: string
+          token_reward_amount: number | null
+          token_reward_type: Database["public"]["Enums"]["token_type"] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          event_type?: Database["public"]["Enums"]["event_type"]
+          id?: string
+          is_active?: boolean
+          pd_reward?: number
+          pi_reward?: number
+          region_id?: string | null
+          start_date?: string | null
+          title: string
+          token_reward_amount?: number | null
+          token_reward_type?: Database["public"]["Enums"]["token_type"] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          event_type?: Database["public"]["Enums"]["event_type"]
+          id?: string
+          is_active?: boolean
+          pd_reward?: number
+          pi_reward?: number
+          region_id?: string | null
+          start_date?: string | null
+          title?: string
+          token_reward_amount?: number | null
+          token_reward_type?: Database["public"]["Enums"]["token_type"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planetary_events_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      regions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      territories: {
+        Row: {
+          accepted_statute: boolean
+          capital_city_id: string | null
+          created_at: string
+          flag_url: string | null
+          government_type: Database["public"]["Enums"]["government_type"]
+          id: string
+          level: Database["public"]["Enums"]["territory_level"]
+          lore: string | null
+          name: string
+          owner_id: string | null
+          pd_points: number
+          pi_points: number
+          region_id: string | null
+          status: Database["public"]["Enums"]["territory_status"]
+          style: Database["public"]["Enums"]["territory_style"]
+          updated_at: string
+        }
+        Insert: {
+          accepted_statute?: boolean
+          capital_city_id?: string | null
+          created_at?: string
+          flag_url?: string | null
+          government_type?: Database["public"]["Enums"]["government_type"]
+          id?: string
+          level?: Database["public"]["Enums"]["territory_level"]
+          lore?: string | null
+          name: string
+          owner_id?: string | null
+          pd_points?: number
+          pi_points?: number
+          region_id?: string | null
+          status?: Database["public"]["Enums"]["territory_status"]
+          style?: Database["public"]["Enums"]["territory_style"]
+          updated_at?: string
+        }
+        Update: {
+          accepted_statute?: boolean
+          capital_city_id?: string | null
+          created_at?: string
+          flag_url?: string | null
+          government_type?: Database["public"]["Enums"]["government_type"]
+          id?: string
+          level?: Database["public"]["Enums"]["territory_level"]
+          lore?: string | null
+          name?: string
+          owner_id?: string | null
+          pd_points?: number
+          pi_points?: number
+          region_id?: string | null
+          status?: Database["public"]["Enums"]["territory_status"]
+          style?: Database["public"]["Enums"]["territory_style"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territories_capital_city_id_fkey"
+            columns: ["capital_city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territories_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territory_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          pd_change: number
+          pi_change: number
+          planetary_event_id: string | null
+          territory_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          pd_change?: number
+          pi_change?: number
+          planetary_event_id?: string | null
+          territory_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          pd_change?: number
+          pi_change?: number
+          planetary_event_id?: string | null
+          territory_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_events_planetary_event_id_fkey"
+            columns: ["planetary_event_id"]
+            isOneToOne: false
+            referencedRelation: "planetary_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_events_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      token_transactions: {
+        Row: {
+          admin_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          reason: string | null
+          token_type: Database["public"]["Enums"]["token_type"]
+          user_id: string
+        }
+        Insert: {
+          admin_id?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          token_type: Database["public"]["Enums"]["token_type"]
+          user_id: string
+        }
+        Update: {
+          admin_id?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          token_type?: Database["public"]["Enums"]["token_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tokens: {
+        Row: {
+          city_tokens: number
+          created_at: string
+          id: string
+          land_tokens: number
+          state_tokens: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city_tokens?: number
+          created_at?: string
+          id?: string
+          land_tokens?: number
+          state_tokens?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city_tokens?: number
+          created_at?: string
+          id?: string
+          land_tokens?: number
+          state_tokens?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      city_status: "free" | "occupied" | "neutral"
+      event_type: "global" | "regional" | "crisis" | "conference" | "war"
+      government_type:
+        | "monarchy"
+        | "republic"
+        | "theocracy"
+        | "oligarchy"
+        | "democracy"
+        | "dictatorship"
+      territory_level:
+        | "colony"
+        | "autonomous"
+        | "recognized"
+        | "kingdom"
+        | "power"
+      territory_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "active"
+        | "inactive"
+      territory_style: "cultural" | "commercial" | "technological" | "military"
+      token_type: "city" | "land" | "state"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +531,34 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      city_status: ["free", "occupied", "neutral"],
+      event_type: ["global", "regional", "crisis", "conference", "war"],
+      government_type: [
+        "monarchy",
+        "republic",
+        "theocracy",
+        "oligarchy",
+        "democracy",
+        "dictatorship",
+      ],
+      territory_level: [
+        "colony",
+        "autonomous",
+        "recognized",
+        "kingdom",
+        "power",
+      ],
+      territory_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "active",
+        "inactive",
+      ],
+      territory_style: ["cultural", "commercial", "technological", "military"],
+      token_type: ["city", "land", "state"],
+    },
   },
 } as const
