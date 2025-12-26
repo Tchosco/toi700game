@@ -10,6 +10,7 @@ import HowToPlayPage from "./pages/HowToPlayPage";
 import CreateTerritoryPage from "./pages/CreateTerritoryPage";
 import TerritoriesPage from "./pages/TerritoriesPage";
 import TerritoryDetailPage from "./pages/TerritoryDetailPage";
+import MarketPage from "./pages/MarketPage";
 import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTerritories from "./pages/admin/AdminTerritories";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/criar-territorio" element={<CreateTerritoryPage />} />
             <Route path="/territorios" element={<TerritoriesPage />} />
             <Route path="/territorio/:id" element={<TerritoryDetailPage />} />
+            <Route path="/mercado" element={<MarketPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/territories" element={<AdminTerritories />} />
             <Route path="/admin/tokens" element={<AdminTokens />} />
