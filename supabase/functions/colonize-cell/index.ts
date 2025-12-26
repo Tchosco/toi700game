@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const body: ColonizeRequest = await req.json();
     const { cell_id, territory_id, use_token } = body;
 
-    console.log(`User ${user.id} attempting to colonize cell ${cell_id} for territory ${territory_id}`);
+    console.log(`[colonize-cell] User ${user.id} attempting to colonize cell ${cell_id} for territory ${territory_id}`);
 
     // Validate input
     if (!cell_id || !territory_id) {
@@ -101,36 +101,27 @@ Deno.serve(async (req) => {
     const baseCost = cell.colonization_cost || 100;
     const tokenLandPrice = 500; // Price in currency for 1 token_land equivalent
 
-    // 4. Check and deduct payment
+    // 4. Use atomic functions for payment to prevent race conditions
     if (use_token) {
-      // Check user has token_land
-      const { data: userTokens, error: tokensError } = await supabase
-        .from('user_tokens')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      // Use atomic token deduction
+      const { data: deductResult, error: deductError } = await supabase.rpc('atomic_deduct_token', {
+        p_user_id: user.id,
+        p_token_type: 'land',
+        p_amount: 1
+      });
 
-      if (tokensError || !userTokens || userTokens.land_tokens < 1) {
+      if (deductError) {
+        console.error('[colonize-cell] Token deduction error:', deductError);
         return new Response(
-          JSON.stringify({ success: false, error: 'Você não possui tokens de terra suficientes' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          JSON.stringify({ success: false, error: 'Erro ao deduzir token: ' + deductError.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
 
-      // Deduct token
-      const { error: deductError } = await supabase
-        .from('user_tokens')
-        .update({ 
-          land_tokens: userTokens.land_tokens - 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (deductError) {
-        console.error('Error deducting token:', deductError);
+      if (!deductResult?.success) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Erro ao deduzir token' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          JSON.stringify({ success: false, error: deductResult?.error || 'Você não possui tokens de terra suficientes' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
 
@@ -146,7 +137,7 @@ Deno.serve(async (req) => {
       // Use currency - need base cost + token equivalent
       const totalCost = baseCost + tokenLandPrice;
 
-      // Check user/territory has enough currency
+      // Use atomic currency deduction from profiles
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('currency')
@@ -163,20 +154,23 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Deduct currency
-      const { error: deductError } = await supabase
+      // Deduct currency atomically using UPDATE with condition
+      const { data: updatedProfile, error: deductError } = await supabase
         .from('profiles')
         .update({ 
           currency: profile.currency - totalCost,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .gte('currency', totalCost) // Only update if still has enough
+        .select()
+        .single();
 
-      if (deductError) {
-        console.error('Error deducting currency:', deductError);
+      if (deductError || !updatedProfile) {
+        console.error('[colonize-cell] Currency deduction failed:', deductError);
         return new Response(
-          JSON.stringify({ success: false, error: 'Erro ao deduzir moeda' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          JSON.stringify({ success: false, error: 'Erro ao deduzir moeda - saldo pode ter sido alterado' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
 
@@ -201,12 +195,14 @@ Deno.serve(async (req) => {
         colonized_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', cell_id);
+      .eq('id', cell_id)
+      .eq('status', 'explored') // Only if still explored (prevent race)
+      .is('owner_territory_id', null); // Only if still unowned
 
     if (colonizeError) {
-      console.error('Error colonizing cell:', colonizeError);
+      console.error('[colonize-cell] Error colonizing cell:', colonizeError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Erro ao colonizar célula' }),
+        JSON.stringify({ success: false, error: 'Erro ao colonizar célula - pode já ter sido colonizada' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
@@ -220,7 +216,7 @@ Deno.serve(async (req) => {
       effects: { cell_id, area_km2: cell.area_km2, is_urban_eligible: cell.is_urban_eligible },
     });
 
-    console.log(`Cell ${cell_id} successfully colonized by territory ${territory_id}`);
+    console.log(`[colonize-cell] Cell ${cell_id} successfully colonized by territory ${territory_id}`);
 
     return new Response(
       JSON.stringify({ 
@@ -237,7 +233,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-    console.error('Colonization error:', errorMessage);
+    console.error('[colonize-cell] Colonization error:', errorMessage);
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

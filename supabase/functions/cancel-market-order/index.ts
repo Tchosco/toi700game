@@ -76,52 +76,55 @@ Deno.serve(async (req) => {
 
     console.log(`[cancel-market-order] Cancelling listing ${listing_id}, returning ${remainingQuantity} ${listing.resource_type}`);
 
-    // Return locked resources/currency
+    // Return locked resources/currency using atomic functions
     if (listing.listing_type === 'sell') {
       // Return tokens or resources to seller
       if (isToken) {
         const tokenType = listing.resource_type.replace('token_', '');
-        const tokenField = `${tokenType}_tokens`;
         
-        const { data: userTokens } = await supabase
-          .from('user_tokens')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+        const { data: refundResult, error: refundError } = await supabase.rpc('atomic_refund_token', {
+          p_user_id: user.id,
+          p_token_type: tokenType,
+          p_amount: Math.floor(remainingQuantity)
+        });
 
-        await supabase
-          .from('user_tokens')
-          .update({ [tokenField]: Number(userTokens[tokenField]) + remainingQuantity })
-          .eq('user_id', user.id);
+        if (refundError || !refundResult?.success) {
+          console.error('[cancel-market-order] Token refund error:', refundError || refundResult?.error);
+          return new Response(JSON.stringify({ error: 'Failed to refund tokens' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       } else if (listing.seller_territory_id) {
-        const { data: resourceBalance } = await supabase
-          .from('resource_balances')
-          .select('*')
-          .eq('territory_id', listing.seller_territory_id)
-          .single();
+        const { data: refundResult, error: refundError } = await supabase.rpc('atomic_refund_resource', {
+          p_territory_id: listing.seller_territory_id,
+          p_resource_type: listing.resource_type,
+          p_amount: remainingQuantity
+        });
 
-        await supabase
-          .from('resource_balances')
-          .update({ 
-            [listing.resource_type]: Number(resourceBalance[listing.resource_type]) + remainingQuantity 
-          })
-          .eq('territory_id', listing.seller_territory_id);
+        if (refundError || !refundResult?.success) {
+          console.error('[cancel-market-order] Resource refund error:', refundError || refundResult?.error);
+          return new Response(JSON.stringify({ error: 'Failed to refund resources' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
     } else {
       // Return currency to buyer
       const refundAmount = remainingQuantity * Number(listing.price_per_unit);
       
-      const { data: wallet } = await supabase
-        .from('player_wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .single();
+      const { data: refundResult, error: refundError } = await supabase.rpc('atomic_refund_currency', {
+        p_user_id: user.id,
+        p_amount: refundAmount
+      });
 
-      if (wallet) {
-        await supabase
-          .from('player_wallets')
-          .update({ balance: Number(wallet.balance) + refundAmount })
-          .eq('user_id', user.id);
+      if (refundError || !refundResult?.success) {
+        console.error('[cancel-market-order] Currency refund error:', refundError || refundResult?.error);
+        return new Response(JSON.stringify({ error: 'Failed to refund currency' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
     }
 
@@ -131,7 +134,7 @@ Deno.serve(async (req) => {
       .update({ status: 'cancelled' })
       .eq('id', listing_id);
 
-    console.log(`[cancel-market-order] Listing cancelled successfully`);
+    console.log(`[cancel-market-order] Listing cancelled successfully with atomic refund`);
 
     return new Response(JSON.stringify({ 
       success: true, 
