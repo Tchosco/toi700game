@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X } from 'lucide-react';
+import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X, Shield, LogIn, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 const navLinks = [
   { to: '/', label: 'Início', icon: Globe },
@@ -14,6 +15,7 @@ const navLinks = [
 export function Navbar() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, isAdmin, signOut } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50">
@@ -51,6 +53,33 @@ export function Navbar() {
             })}
           </div>
 
+          {/* Auth Buttons - Desktop */}
+          <div className="hidden md:flex items-center gap-2">
+            {user ? (
+              <>
+                {isAdmin && (
+                  <Link to="/admin">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => signOut()} className="gap-2">
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button variant="default" size="sm" className="gap-2">
+                  <LogIn className="w-4 h-4" />
+                  Entrar
+                </Button>
+              </Link>
+            )}
+          </div>
+
           {/* Mobile Menu Button */}
           <Button
             variant="ghost"
@@ -85,6 +114,43 @@ export function Navbar() {
                   </Link>
                 );
               })}
+
+              {/* Auth Links - Mobile */}
+              <div className="border-t border-border/50 mt-2 pt-2">
+                {user ? (
+                  <>
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-status-warning hover:bg-muted/50"
+                      >
+                        <Shield className="w-5 h-5" />
+                        Painel Admin
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 w-full text-left"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      Sair
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/auth"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-primary hover:bg-muted/50"
+                  >
+                    <LogIn className="w-5 h-5" />
+                    Entrar
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         )}
