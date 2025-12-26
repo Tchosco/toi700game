@@ -153,57 +153,50 @@ export default function CreateTerritoryPage() {
     setIsSubmitting(true);
 
     try {
-      // First, create the capital city
-      const { data: cityData, error: cityError } = await supabase
-        .from('cities')
-        .insert({
-          name: formData.capitalName.trim(),
-          region_id: formData.regionId,
-          status: 'free',
-          is_neutral: false,
-        })
-        .select()
-        .single();
-
-      if (cityError) {
-        throw new Error(`Erro ao criar capital: ${cityError.message}`);
+      // Get auth session for the edge function
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Sessão expirada. Faça login novamente.');
       }
 
-      // Then create the territory
-      const { error: territoryError } = await supabase
-        .from('territories')
-        .insert({
+      // Call the edge function to create territory atomically
+      const { data, error } = await supabase.functions.invoke('create-territory', {
+        body: {
           name: formData.name.trim(),
-          owner_id: user.id,
-          capital_city_id: cityData.id,
           region_id: formData.regionId,
-          government_type: formData.governmentType as GovernmentType,
-          style: formData.style as TerritoryStyle,
+          capital_name: formData.capitalName.trim(),
+          government_type: formData.governmentType,
+          style: formData.style,
           lore: formData.lore.trim(),
-          accepted_statute: true,
-          status: 'pending',
-          level: 'colony',
-        });
+        },
+      });
 
-      if (territoryError) {
-        // Rollback: delete the created city
-        await supabase.from('cities').delete().eq('id', cityData.id);
-        throw new Error(`Erro ao criar território: ${territoryError.message}`);
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Erro ao criar território.');
       }
 
-      // Update city to be owned by the territory
-      await supabase
-        .from('cities')
-        .update({ status: 'occupied' })
-        .eq('id', cityData.id);
+      if (!data?.success) {
+        // Handle specific error codes with user-friendly messages
+        const errorMessage = data?.error || 'Erro desconhecido ao criar território.';
+        const errorCode = data?.code;
+
+        if (errorCode === 'AUTH_REQUIRED' || errorCode === 'INVALID_SESSION') {
+          navigate('/auth');
+        }
+        
+        throw new Error(errorMessage);
+      }
 
       toast({
         title: 'Território enviado para análise!',
-        description: 'O Administrador Planetário irá revisar sua solicitação.',
+        description: data.message || 'O Administrador Planetário irá revisar sua solicitação.',
       });
 
       navigate('/territorios');
     } catch (error) {
+      console.error('Create territory error:', error);
       toast({
         title: 'Erro ao criar território',
         description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado.',
