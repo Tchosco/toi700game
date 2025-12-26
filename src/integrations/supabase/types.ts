@@ -19,6 +19,7 @@ export type Database = {
           area_km2: number
           cell_type: Database["public"]["Enums"]["cell_type"]
           city_id: string | null
+          colonization_cost: number | null
           colonized_at: string | null
           colonized_by: string | null
           created_at: string
@@ -26,6 +27,7 @@ export type Database = {
           explored_by: string | null
           has_city: boolean
           id: string
+          is_urban_eligible: boolean
           owner_territory_id: string | null
           region_id: string | null
           status: Database["public"]["Enums"]["cell_status"]
@@ -37,6 +39,7 @@ export type Database = {
           area_km2?: number
           cell_type?: Database["public"]["Enums"]["cell_type"]
           city_id?: string | null
+          colonization_cost?: number | null
           colonized_at?: string | null
           colonized_by?: string | null
           created_at?: string
@@ -44,6 +47,7 @@ export type Database = {
           explored_by?: string | null
           has_city?: boolean
           id?: string
+          is_urban_eligible?: boolean
           owner_territory_id?: string | null
           region_id?: string | null
           status?: Database["public"]["Enums"]["cell_status"]
@@ -55,6 +59,7 @@ export type Database = {
           area_km2?: number
           cell_type?: Database["public"]["Enums"]["cell_type"]
           city_id?: string | null
+          colonization_cost?: number | null
           colonized_at?: string | null
           colonized_by?: string | null
           created_at?: string
@@ -62,6 +67,7 @@ export type Database = {
           explored_by?: string | null
           has_city?: boolean
           id?: string
+          is_urban_eligible?: boolean
           owner_territory_id?: string | null
           region_id?: string | null
           status?: Database["public"]["Enums"]["cell_status"]
@@ -1761,6 +1767,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_region_cells: {
+        Args: { p_num_cells?: number; p_region_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
