@@ -23,3 +23,12 @@ verify_jwt = false
 
 [functions.declare-war]
 verify_jwt = false
+
+[functions.create-law]
+verify_jwt = false
+
+[functions.cast-vote]
+verify_jwt = false
+
+[functions.create-territory]
+verify_jwt = false
