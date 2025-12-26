@@ -24,6 +24,7 @@ export type Database = {
           created_at: string
           explored_at: string | null
           explored_by: string | null
+          has_city: boolean
           id: string
           owner_territory_id: string | null
           region_id: string | null
@@ -41,6 +42,7 @@ export type Database = {
           created_at?: string
           explored_at?: string | null
           explored_by?: string | null
+          has_city?: boolean
           id?: string
           owner_territory_id?: string | null
           region_id?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           created_at?: string
           explored_at?: string | null
           explored_by?: string | null
+          has_city?: boolean
           id?: string
           owner_territory_id?: string | null
           region_id?: string | null
@@ -105,6 +108,8 @@ export type Database = {
           is_neutral: boolean
           name: string
           owner_territory_id: string | null
+          population: number
+          profile_id: string | null
           region_id: string | null
           status: Database["public"]["Enums"]["city_status"]
           updated_at: string
@@ -116,6 +121,8 @@ export type Database = {
           is_neutral?: boolean
           name: string
           owner_territory_id?: string | null
+          population?: number
+          profile_id?: string | null
           region_id?: string | null
           status?: Database["public"]["Enums"]["city_status"]
           updated_at?: string
@@ -127,6 +134,8 @@ export type Database = {
           is_neutral?: boolean
           name?: string
           owner_territory_id?: string | null
+          population?: number
+          profile_id?: string | null
           region_id?: string | null
           status?: Database["public"]["Enums"]["city_status"]
           updated_at?: string
@@ -137,6 +146,13 @@ export type Database = {
             columns: ["cell_id"]
             isOneToOne: false
             referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cities_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "city_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -154,6 +170,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      city_profiles: {
+        Row: {
+          base_outputs_per_tick: Json
+          base_research_per_tick: number
+          created_at: string
+          description: string | null
+          id: string
+          maintenance_cost_per_tick: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          base_outputs_per_tick?: Json
+          base_research_per_tick?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          maintenance_cost_per_tick?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          base_outputs_per_tick?: Json
+          base_research_per_tick?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          maintenance_cost_per_tick?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       currency_transactions: {
         Row: {
@@ -293,6 +342,56 @@ export type Database = {
             columns: ["era_id"]
             isOneToOne: false
             referencedRelation: "planetary_eras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_listings: {
+        Row: {
+          created_at: string
+          filled_quantity: number
+          id: string
+          listing_type: Database["public"]["Enums"]["listing_type"]
+          price_per_unit: number
+          quantity: number
+          resource_type: Database["public"]["Enums"]["market_resource_type"]
+          seller_territory_id: string | null
+          seller_user_id: string
+          status: Database["public"]["Enums"]["listing_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          filled_quantity?: number
+          id?: string
+          listing_type?: Database["public"]["Enums"]["listing_type"]
+          price_per_unit: number
+          quantity: number
+          resource_type: Database["public"]["Enums"]["market_resource_type"]
+          seller_territory_id?: string | null
+          seller_user_id: string
+          status?: Database["public"]["Enums"]["listing_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          filled_quantity?: number
+          id?: string
+          listing_type?: Database["public"]["Enums"]["listing_type"]
+          price_per_unit?: number
+          quantity?: number
+          resource_type?: Database["public"]["Enums"]["market_resource_type"]
+          seller_territory_id?: string | null
+          seller_user_id?: string
+          status?: Database["public"]["Enums"]["listing_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_listings_seller_territory_id_fkey"
+            columns: ["seller_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
             referencedColumns: ["id"]
           },
         ]
@@ -459,21 +558,33 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          currency: number
+          development_points: number
           id: string
+          influence_points: number
+          research_points: number
           updated_at: string
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          currency?: number
+          development_points?: number
           id: string
+          influence_points?: number
+          research_points?: number
           updated_at?: string
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          currency?: number
+          development_points?: number
           id?: string
+          influence_points?: number
+          research_points?: number
           updated_at?: string
           username?: string | null
         }
@@ -525,22 +636,177 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          difficulty: Database["public"]["Enums"]["region_difficulty"]
           id: string
+          is_visible: boolean
           name: string
+          required_research_points: number
+          updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
+          difficulty?: Database["public"]["Enums"]["region_difficulty"]
           id?: string
+          is_visible?: boolean
           name: string
+          required_research_points?: number
+          updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
+          difficulty?: Database["public"]["Enums"]["region_difficulty"]
           id?: string
+          is_visible?: boolean
           name?: string
+          required_research_points?: number
+          updated_at?: string
         }
         Relationships: []
+      }
+      research_contributions: {
+        Row: {
+          created_at: string
+          id: string
+          points_contributed: number
+          project_id: string
+          territory_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points_contributed?: number
+          project_id: string
+          territory_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points_contributed?: number
+          project_id?: string
+          territory_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_contributions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "research_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_contributions_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_projects: {
+        Row: {
+          cost_research_points_total: number
+          created_at: string
+          created_by_territory_id: string | null
+          created_by_user_id: string | null
+          description: string | null
+          id: string
+          is_global: boolean
+          name: string
+          progress_research_points: number
+          status: Database["public"]["Enums"]["research_project_status"]
+          target_region_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost_research_points_total?: number
+          created_at?: string
+          created_by_territory_id?: string | null
+          created_by_user_id?: string | null
+          description?: string | null
+          id?: string
+          is_global?: boolean
+          name: string
+          progress_research_points?: number
+          status?: Database["public"]["Enums"]["research_project_status"]
+          target_region_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost_research_points_total?: number
+          created_at?: string
+          created_by_territory_id?: string | null
+          created_by_user_id?: string | null
+          description?: string | null
+          id?: string
+          is_global?: boolean
+          name?: string
+          progress_research_points?: number
+          status?: Database["public"]["Enums"]["research_project_status"]
+          target_region_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_projects_created_by_territory_id_fkey"
+            columns: ["created_by_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_projects_target_region_id_fkey"
+            columns: ["target_region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_balances: {
+        Row: {
+          energy: number
+          food: number
+          id: string
+          minerals: number
+          tech: number
+          territory_id: string
+          tick_number: number
+          updated_at: string
+        }
+        Insert: {
+          energy?: number
+          food?: number
+          id?: string
+          minerals?: number
+          tech?: number
+          territory_id: string
+          tick_number?: number
+          updated_at?: string
+        }
+        Update: {
+          energy?: number
+          food?: number
+          id?: string
+          minerals?: number
+          tech?: number
+          territory_id?: string
+          tick_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_balances_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: true
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resource_market: {
         Row: {
@@ -637,6 +903,7 @@ export type Database = {
           flag_url: string | null
           government_type: Database["public"]["Enums"]["government_type"]
           id: string
+          is_neutral: boolean
           level: Database["public"]["Enums"]["territory_level"]
           lore: string | null
           name: string
@@ -648,6 +915,7 @@ export type Database = {
           stability: number
           status: Database["public"]["Enums"]["territory_status"]
           style: Database["public"]["Enums"]["territory_style"]
+          treasury: number
           updated_at: string
         }
         Insert: {
@@ -658,6 +926,7 @@ export type Database = {
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
           id?: string
+          is_neutral?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
           name: string
@@ -669,6 +938,7 @@ export type Database = {
           stability?: number
           status?: Database["public"]["Enums"]["territory_status"]
           style?: Database["public"]["Enums"]["territory_style"]
+          treasury?: number
           updated_at?: string
         }
         Update: {
@@ -679,6 +949,7 @@ export type Database = {
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
           id?: string
+          is_neutral?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
           name?: string
@@ -690,6 +961,7 @@ export type Database = {
           stability?: number
           status?: Database["public"]["Enums"]["territory_status"]
           style?: Database["public"]["Enums"]["territory_style"]
+          treasury?: number
           updated_at?: string
         }
         Relationships: [
@@ -1011,6 +1283,60 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_deals: {
+        Row: {
+          created_at: string
+          from_territory_id: string
+          from_user_id: string
+          id: string
+          offer: Json
+          request: Json
+          status: Database["public"]["Enums"]["trade_deal_status"]
+          to_territory_id: string
+          to_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_territory_id: string
+          from_user_id: string
+          id?: string
+          offer?: Json
+          request?: Json
+          status?: Database["public"]["Enums"]["trade_deal_status"]
+          to_territory_id: string
+          to_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_territory_id?: string
+          from_user_id?: string
+          id?: string
+          offer?: Json
+          request?: Json
+          status?: Database["public"]["Enums"]["trade_deal_status"]
+          to_territory_id?: string
+          to_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_deals_from_territory_id_fkey"
+            columns: ["from_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_deals_to_territory_id_fkey"
+            columns: ["to_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treaties: {
         Row: {
           accepted_by: string | null
@@ -1175,6 +1501,44 @@ export type Database = {
           },
         ]
       }
+      war_turn_logs: {
+        Row: {
+          attacker_power: number
+          created_at: string
+          defender_power: number
+          id: string
+          result_summary: string | null
+          tick_number: number
+          war_id: string
+        }
+        Insert: {
+          attacker_power?: number
+          created_at?: string
+          defender_power?: number
+          id?: string
+          result_summary?: string | null
+          tick_number: number
+          war_id: string
+        }
+        Update: {
+          attacker_power?: number
+          created_at?: string
+          defender_power?: number
+          id?: string
+          result_summary?: string | null
+          tick_number?: number
+          war_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "war_turn_logs_war_id_fkey"
+            columns: ["war_id"]
+            isOneToOne: false
+            referencedRelation: "wars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wars: {
         Row: {
           attacker_id: string
@@ -1191,6 +1555,7 @@ export type Database = {
           id: string
           max_cycles: number
           status: Database["public"]["Enums"]["war_status"]
+          target_cells: Json | null
           title: string
           updated_at: string
           winner_id: string | null
@@ -1210,6 +1575,7 @@ export type Database = {
           id?: string
           max_cycles?: number
           status?: Database["public"]["Enums"]["war_status"]
+          target_cells?: Json | null
           title: string
           updated_at?: string
           winner_id?: string | null
@@ -1229,6 +1595,7 @@ export type Database = {
           id?: string
           max_cycles?: number
           status?: Database["public"]["Enums"]["war_status"]
+          target_cells?: Json | null
           title?: string
           updated_at?: string
           winner_id?: string | null
@@ -1256,6 +1623,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      world_config: {
+        Row: {
+          cell_size_km2_default: number
+          created_at: string
+          id: string
+          initial_playable_land_km2: number
+          max_urban_ratio: number
+          season_day: number
+          tick_interval_hours: number
+          total_planet_land_km2: number
+          updated_at: string
+        }
+        Insert: {
+          cell_size_km2_default?: number
+          created_at?: string
+          id?: string
+          initial_playable_land_km2?: number
+          max_urban_ratio?: number
+          season_day?: number
+          tick_interval_hours?: number
+          total_planet_land_km2?: number
+          updated_at?: string
+        }
+        Update: {
+          cell_size_km2_default?: number
+          created_at?: string
+          id?: string
+          initial_playable_land_km2?: number
+          max_urban_ratio?: number
+          season_day?: number
+          tick_interval_hours?: number
+          total_planet_land_km2?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -1290,6 +1693,18 @@ export type Database = {
         | "oligarchy"
         | "democracy"
         | "dictatorship"
+      listing_status: "open" | "partially_filled" | "filled" | "cancelled"
+      listing_type: "sell" | "buy"
+      market_resource_type:
+        | "food"
+        | "energy"
+        | "minerals"
+        | "tech"
+        | "token_city"
+        | "token_land"
+        | "token_state"
+      region_difficulty: "easy" | "medium" | "hard" | "extreme" | "anomaly"
+      research_project_status: "active" | "completed" | "cancelled"
       resource_type: "food" | "energy" | "minerals" | "technology" | "influence"
       territory_level:
         | "colony"
@@ -1305,6 +1720,12 @@ export type Database = {
         | "inactive"
       territory_style: "cultural" | "commercial" | "technological" | "military"
       token_type: "city" | "land" | "state"
+      trade_deal_status:
+        | "proposed"
+        | "accepted"
+        | "rejected"
+        | "completed"
+        | "cancelled"
       treaty_type:
         | "peace"
         | "trade"
@@ -1312,6 +1733,7 @@ export type Database = {
         | "non_aggression"
         | "research"
         | "territorial"
+      war_game_status: "declared" | "ongoing" | "resolved"
       war_status: "declared" | "active" | "ceasefire" | "ended"
     }
     CompositeTypes: {
@@ -1461,6 +1883,19 @@ export const Constants = {
         "democracy",
         "dictatorship",
       ],
+      listing_status: ["open", "partially_filled", "filled", "cancelled"],
+      listing_type: ["sell", "buy"],
+      market_resource_type: [
+        "food",
+        "energy",
+        "minerals",
+        "tech",
+        "token_city",
+        "token_land",
+        "token_state",
+      ],
+      region_difficulty: ["easy", "medium", "hard", "extreme", "anomaly"],
+      research_project_status: ["active", "completed", "cancelled"],
       resource_type: ["food", "energy", "minerals", "technology", "influence"],
       territory_level: [
         "colony",
@@ -1478,6 +1913,13 @@ export const Constants = {
       ],
       territory_style: ["cultural", "commercial", "technological", "military"],
       token_type: ["city", "land", "state"],
+      trade_deal_status: [
+        "proposed",
+        "accepted",
+        "rejected",
+        "completed",
+        "cancelled",
+      ],
       treaty_type: [
         "peace",
         "trade",
@@ -1486,6 +1928,7 @@ export const Constants = {
         "research",
         "territorial",
       ],
+      war_game_status: ["declared", "ongoing", "resolved"],
       war_status: ["declared", "active", "ceasefire", "ended"],
     },
   },
