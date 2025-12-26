@@ -59,6 +59,45 @@ export type Database = {
           },
         ]
       }
+      cell_cities: {
+        Row: {
+          cell_id: string
+          city_id: string
+          created_at: string
+          id: string
+          is_primary: boolean | null
+        }
+        Insert: {
+          cell_id: string
+          city_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+        }
+        Update: {
+          cell_id?: string
+          city_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cell_cities_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cell_cities_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cells: {
         Row: {
           area_km2: number
@@ -70,17 +109,21 @@ export type Database = {
           created_at: string
           explored_at: string | null
           explored_by: string | null
+          focus_changed_at: string | null
+          focus_penalty_until: string | null
           has_city: boolean
           id: string
           is_urban_eligible: boolean
           owner_territory_id: string | null
           population_density: number
           region_id: string | null
+          rural_focus: string | null
           rural_population: number
           status: Database["public"]["Enums"]["cell_status"]
           unlock_reason: string | null
           unlocked_by_era_id: string | null
           updated_at: string
+          urban_focus: string | null
           urban_population: number
         }
         Insert: {
@@ -93,17 +136,21 @@ export type Database = {
           created_at?: string
           explored_at?: string | null
           explored_by?: string | null
+          focus_changed_at?: string | null
+          focus_penalty_until?: string | null
           has_city?: boolean
           id?: string
           is_urban_eligible?: boolean
           owner_territory_id?: string | null
           population_density?: number
           region_id?: string | null
+          rural_focus?: string | null
           rural_population?: number
           status?: Database["public"]["Enums"]["cell_status"]
           unlock_reason?: string | null
           unlocked_by_era_id?: string | null
           updated_at?: string
+          urban_focus?: string | null
           urban_population?: number
         }
         Update: {
@@ -116,17 +163,21 @@ export type Database = {
           created_at?: string
           explored_at?: string | null
           explored_by?: string | null
+          focus_changed_at?: string | null
+          focus_penalty_until?: string | null
           has_city?: boolean
           id?: string
           is_urban_eligible?: boolean
           owner_territory_id?: string | null
           population_density?: number
           region_id?: string | null
+          rural_focus?: string | null
           rural_population?: number
           status?: Database["public"]["Enums"]["cell_status"]
           unlock_reason?: string | null
           unlocked_by_era_id?: string | null
           updated_at?: string
+          urban_focus?: string | null
           urban_population?: number
         }
         Relationships: [
@@ -1384,8 +1435,10 @@ export type Database = {
       territories: {
         Row: {
           accepted_statute: boolean
+          admin_style: string | null
           capital_city_id: string | null
           created_at: string
+          demonym: string | null
           economy_rating: number
           flag_url: string | null
           government_type: Database["public"]["Enums"]["government_type"]
@@ -1393,7 +1446,9 @@ export type Database = {
           is_neutral: boolean
           level: Database["public"]["Enums"]["territory_level"]
           lore: string | null
+          motto: string | null
           name: string
+          official_color: string | null
           owner_id: string | null
           pd_points: number
           pi_points: number
@@ -1406,11 +1461,14 @@ export type Database = {
           total_urban_population: number
           treasury: number
           updated_at: string
+          vocation: string | null
         }
         Insert: {
           accepted_statute?: boolean
+          admin_style?: string | null
           capital_city_id?: string | null
           created_at?: string
+          demonym?: string | null
           economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
@@ -1418,7 +1476,9 @@ export type Database = {
           is_neutral?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
+          motto?: string | null
           name: string
+          official_color?: string | null
           owner_id?: string | null
           pd_points?: number
           pi_points?: number
@@ -1431,11 +1491,14 @@ export type Database = {
           total_urban_population?: number
           treasury?: number
           updated_at?: string
+          vocation?: string | null
         }
         Update: {
           accepted_statute?: boolean
+          admin_style?: string | null
           capital_city_id?: string | null
           created_at?: string
+          demonym?: string | null
           economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
@@ -1443,7 +1506,9 @@ export type Database = {
           is_neutral?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
+          motto?: string | null
           name?: string
+          official_color?: string | null
           owner_id?: string | null
           pd_points?: number
           pi_points?: number
@@ -1456,6 +1521,7 @@ export type Database = {
           total_urban_population?: number
           treasury?: number
           updated_at?: string
+          vocation?: string | null
         }
         Relationships: [
           {
