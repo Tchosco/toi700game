@@ -197,9 +197,13 @@ export default function CreateTerritoryPage() {
         throw new Error(detailedError);
       }
 
+      const isAutoApproved = data?.auto_approved === true;
+      
       toast({
-        title: 'Território enviado para análise!',
-        description: data.message || 'O Administrador Planetário irá revisar sua solicitação.',
+        title: isAutoApproved ? 'Território criado e ativado!' : 'Território enviado para análise!',
+        description: data.message || (isAutoApproved 
+          ? 'Seu primeiro território foi aprovado automaticamente. Bem-vindo ao TOI-700!'
+          : 'O Administrador Planetário irá revisar sua solicitação.'),
       });
 
       navigate('/territorios');
@@ -260,9 +264,12 @@ export default function CreateTerritoryPage() {
           <h1 className="font-display text-3xl md:text-4xl font-bold mb-4">
             Criar Território
           </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Estabeleça sua nação no planeta TOI-700. Após envio, sua solicitação será analisada pelo Administrador Planetário.
+          <p className="text-muted-foreground max-w-2xl mx-auto mb-4">
+            Estabeleça sua nação no planeta TOI-700. Seu primeiro território é aprovado automaticamente!
           </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+            <span className="text-sm text-green-500 font-medium">✓ Aprovação automática para o primeiro território</span>
+          </div>
         </div>
 
         {/* Form */}

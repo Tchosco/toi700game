@@ -20,49 +20,52 @@ const sections = [
 **O planeta TOI-700:**
 - Superfície total: 1,3× a área da Terra (~663 milhões km²)
 - Área terrestre total: ~269 milhões km²
-- Área jogável inicial: ~30 milhões km² (Era da Cartografia)
+- População planetária: ~10 bilhões de habitantes
+- Todo o planeta está LIBERADO desde o início
 
-O planeta é dividido em células territoriais de aproximadamente 7.500 km² cada. Inicialmente, cerca de 4.000 células estão disponíveis para colonização.`
+O planeta é dividido em ~35.900 células territoriais de 7.500 km² cada. Toda célula possui população e recursos desde o início.`
   },
   {
     id: 'celulas',
     title: 'Sistema de Células',
     icon: Grid3X3,
-    content: `O território do planeta é dividido em células abstratas. Cada célula representa uma área de aproximadamente 7.500 km².
+    content: `O território do planeta é dividido em ~35.900 células. Cada célula representa uma área de 7.500 km² com população e recursos.
+
+**Tipos de células:**
+- **Urbana (~20%):** ~766.000 hab/célula, 3 cidades, alto em tecnologia e influência
+- **Rural (~80%):** ~157.000 hab/célula, 1 cidade pequena, alto em alimentos e minerais
 
 **Status das células:**
-- **Bloqueada:** Não revelada, inacessível
 - **Explorada:** Visível para todos, mas sem dono
 - **Colonizada:** Possui um território controlador
 
-**Tipos de células:**
-- **Rural:** Produz recursos básicos (a maioria)
-- **Urbana:** Contém uma cidade (máximo ~20%)
-- **Neutra:** Controlada pela administração
-- **Bloqueada:** Não disponível para colonização
-
-A exploração revela células para TODOS os jogadores. A colonização é individual.`
+**População e Ativação:**
+- Toda célula possui população latente desde o início
+- Ao colonizar, a população se torna ATIVA (tributável, produtiva)
+- Células sem dono possuem população latente`
   },
   {
     id: 'economia',
     title: 'Economia e Moeda',
     icon: Wallet,
-    content: `O planeta possui uma economia interna com moeda única (₮) e mercado automático de recursos.
+    content: `O planeta possui uma economia interna com moeda única (₮) e mercado AUTOMÁTICO de recursos.
 
 **Moeda do jogo (₮):**
 - Novos jogadores recebem ₮1.000 iniciais
 - Usada para comprar tokens, recursos e financiar operações
-- Obtida através de boa administração, comércio e eventos
 - NÃO é conversível em dinheiro real
 
-**Recursos básicos:**
-- 🌾 Alimentos - Produzidos por células rurais
-- ⚡ Energia - Essencial para produção
-- 💎 Minerais - Usados em construção
-- 💻 Tecnologia - Necessária para pesquisa
-- 👥 Influência - Poder político
+**Recursos básicos (todas as células possuem):**
+- 🌾 Alimentos - Produzidos principalmente por células rurais
+- ⚡ Energia - Distribuída equilibradamente pelo planeta
+- 💎 Minerais - Produzidos por células rurais
+- 💻 Tecnologia - Produzida por células urbanas
+- 👥 Influência - Gerada por população urbana
 
-Os preços variam conforme oferta e demanda global.`
+**Mercado Automático:**
+- Compras e vendas são executadas IMEDIATAMENTE
+- Não há aprovação humana para transações
+- Preços variam conforme oferta e demanda global`
   },
   {
     id: 'tokens',
@@ -139,14 +142,17 @@ Jogadores podem participar de projetos cooperativos para explorar novas regiões
     icon: Flag,
     content: `Para formar oficialmente um país reconhecido, você precisa atender aos requisitos.
 
-**Requisitos mínimos:**
+**PRIMEIRO TERRITÓRIO = APROVAÇÃO AUTOMÁTICA:**
+- Seu primeiro território é aprovado IMEDIATAMENTE
+- Não depende de votação ou análise administrativa
+- Você recebe automaticamente 1 célula inicial com população ativa
+
+**Requisitos para País Oficial:**
 - 3 cidades adquiridas
 - 1 State Token
 - Capital definida
 - Nome oficial
 - Tipo de governo escolhido
-
-O processo é AUTOMÁTICO quando os requisitos são atendidos. Não depende de aprovação manual.
 
 Após formação, o território se torna um "Estado Reconhecido" com acesso a privilégios especiais no ranking planetário.`
   },

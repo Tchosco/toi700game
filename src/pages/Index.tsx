@@ -244,12 +244,16 @@ export default function Index() {
                   <span className="font-mono font-bold">269.000.000 km²</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Área Jogável</span>
-                  <span className="font-mono font-bold text-primary">~30.000.000 km²</span>
+                  <span className="text-muted-foreground">População Total</span>
+                  <span className="font-mono font-bold text-primary">10.000.000.000</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Total de Células</span>
-                  <span className="font-mono font-bold">{stats?.totalCells || '~4.000'}</span>
+                  <span className="font-mono font-bold">~35.900</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Células Ativas</span>
+                  <span className="font-mono font-bold text-green-500">{stats?.totalCells || 0}</span>
                 </div>
               </CardContent>
             </Card>
