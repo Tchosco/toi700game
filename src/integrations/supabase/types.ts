@@ -1433,6 +1433,70 @@ export type Database = {
           },
         ]
       }
+      trade_history: {
+        Row: {
+          buyer_territory_id: string | null
+          buyer_user_id: string
+          created_at: string
+          id: string
+          listing_id: string | null
+          price_per_unit: number
+          quantity: number
+          resource_type: Database["public"]["Enums"]["market_resource_type"]
+          seller_territory_id: string | null
+          seller_user_id: string
+          total_price: number
+        }
+        Insert: {
+          buyer_territory_id?: string | null
+          buyer_user_id: string
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          price_per_unit: number
+          quantity: number
+          resource_type: Database["public"]["Enums"]["market_resource_type"]
+          seller_territory_id?: string | null
+          seller_user_id: string
+          total_price: number
+        }
+        Update: {
+          buyer_territory_id?: string | null
+          buyer_user_id?: string
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          price_per_unit?: number
+          quantity?: number
+          resource_type?: Database["public"]["Enums"]["market_resource_type"]
+          seller_territory_id?: string | null
+          seller_user_id?: string
+          total_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_history_buyer_territory_id_fkey"
+            columns: ["buyer_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_history_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "market_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_history_seller_territory_id_fkey"
+            columns: ["seller_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treaties: {
         Row: {
           accepted_by: string | null
@@ -1727,6 +1791,7 @@ export type Database = {
           id: string
           initial_playable_land_km2: number
           last_tick_at: string | null
+          max_listings_per_territory: number
           max_urban_ratio: number
           season_day: number
           tick_interval_hours: number
@@ -1740,6 +1805,7 @@ export type Database = {
           id?: string
           initial_playable_land_km2?: number
           last_tick_at?: string | null
+          max_listings_per_territory?: number
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
@@ -1753,6 +1819,7 @@ export type Database = {
           id?: string
           initial_playable_land_km2?: number
           last_tick_at?: string | null
+          max_listings_per_territory?: number
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
