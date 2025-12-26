@@ -2,52 +2,247 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   BookOpen, Building2, Map, Flag, Coins, TrendingUp, Sparkles, 
-  Users, Globe, Zap, Award, Shield
+  Users, Globe, Zap, Award, Shield, Wallet, FlaskConical, Compass,
+  Swords, Handshake, Clock, Grid3X3, MapPin, Wheat, Cpu, Gem
 } from 'lucide-react';
 import { TokenDisplay } from '@/components/ui/TokenDisplay';
 import { levelRequirements, tokenDescriptions } from '@/lib/data';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const sections = [
   {
     id: 'conceito',
     title: 'Conceito do Jogo',
     icon: Globe,
-    content: `TOI-700 é um simulador micronacional gamificado onde você assume o papel de governante de um território em um planeta fictício. Diferente de jogos gráficos, o sistema é baseado em dados, painéis administrativos e progressão narrativa.
+    content: `TOI-700 é um simulador micronacional gamificado de longo prazo onde você assume o papel de governante de um território em um planeta fictício. O sistema é focado em exploração planetária, colonização, administração territorial, economia, diplomacia e guerra.
 
-Cada jogador pode fundar cidades, formar países, participar de eventos e evoluir seu status político através de um sistema de pontos e tokens.`
+**O planeta TOI-700:**
+- Superfície total: 1,3× a área da Terra (~663 milhões km²)
+- Área terrestre total: ~269 milhões km²
+- Área jogável inicial: ~30 milhões km² (Era da Cartografia)
+
+O planeta é dividido em células territoriais de aproximadamente 7.500 km² cada. Inicialmente, cerca de 4.000 células estão disponíveis para colonização.`
   },
   {
-    id: 'territorios',
-    title: 'Territórios e Cidades',
-    icon: Building2,
-    content: `O planeta possui um número limitado de cidades jogáveis. Cada cidade ocupa uma célula territorial abstrata e pode ser adquirida usando City Tokens (CT).
+    id: 'celulas',
+    title: 'Sistema de Células',
+    icon: Grid3X3,
+    content: `O território do planeta é dividido em células abstratas. Cada célula representa uma área de aproximadamente 7.500 km².
 
-**Como funciona:**
-- Cidades livres podem ser adquiridas com CT
-- Territórios são formados a partir da união de cidades
-- Cada cidade possui uma região associada
-- A capital é sempre uma das cidades do território`
+**Status das células:**
+- **Bloqueada:** Não revelada, inacessível
+- **Explorada:** Visível para todos, mas sem dono
+- **Colonizada:** Possui um território controlador
+
+**Tipos de células:**
+- **Rural:** Produz recursos básicos (a maioria)
+- **Urbana:** Contém uma cidade (máximo ~20%)
+- **Neutra:** Controlada pela administração
+- **Bloqueada:** Não disponível para colonização
+
+A exploração revela células para TODOS os jogadores. A colonização é individual.`
+  },
+  {
+    id: 'economia',
+    title: 'Economia e Moeda',
+    icon: Wallet,
+    content: `O planeta possui uma economia interna com moeda única (₮) e mercado automático de recursos.
+
+**Moeda do jogo (₮):**
+- Novos jogadores recebem ₮1.000 iniciais
+- Usada para comprar tokens, recursos e financiar operações
+- Obtida através de boa administração, comércio e eventos
+- NÃO é conversível em dinheiro real
+
+**Recursos básicos:**
+- 🌾 Alimentos - Produzidos por células rurais
+- ⚡ Energia - Essencial para produção
+- 💎 Minerais - Usados em construção
+- 💻 Tecnologia - Necessária para pesquisa
+- 👥 Influência - Poder político
+
+Os preços variam conforme oferta e demanda global.`
   },
   {
     id: 'tokens',
     title: 'Sistema de Tokens',
     icon: Coins,
-    content: `Tokens são a moeda do jogo, usados para expansão e progressão. Eles NÃO envolvem dinheiro real e são ganhos através de participação ativa.`
+    content: `Tokens são itens especiais usados para expansão territorial. Eles são COMPRADOS no mercado usando a moeda do jogo.`
+  },
+  {
+    id: 'pesquisa',
+    title: 'Pesquisa Científica',
+    icon: FlaskConical,
+    content: `O sistema de pesquisa permite desbloquear novas regiões e tecnologias.
+
+**Pontos de Pesquisa (PP):**
+- Gerados automaticamente por cidades
+- Aumentados por estabilidade territorial
+- Usados para explorar novas regiões
+
+**O que a pesquisa permite:**
+- Revelar células bloqueadas
+- Reduzir custo de colonização
+- Explorar regiões difíceis
+- Desbloquear tecnologias
+
+A pesquisa é um esforço coletivo: quando uma região é explorada, ela fica visível para TODOS os jogadores.`
+  },
+  {
+    id: 'exploracao',
+    title: 'Exploração e Colonização',
+    icon: Compass,
+    content: `Exploração e colonização são mecânicas distintas e fundamentais.
+
+**Exploração 🧭**
+- Consome Pontos de Pesquisa
+- Revela células bloqueadas
+- Torna regiões visíveis a todos
+- NÃO concede posse territorial
+- É gradual, planetária e permanente
+
+**Colonização 🏗️**
+- Só ocorre em células já exploradas
+- Concede posse territorial
+- Cria célula rural ou urbana
+- Consome tokens (Land ou City)
+
+**Projetos de Exploração:**
+Jogadores podem participar de projetos cooperativos para explorar novas regiões do planeta.`
+  },
+  {
+    id: 'territorios',
+    title: 'Territórios e Cidades',
+    icon: Building2,
+    content: `Territórios são formados pela união de células colonizadas.
+
+**Cidades:**
+- Apenas ~20% das células podem ser urbanas
+- Fundar cidade requer 1 City Token
+- Cidades geram recursos, moeda e pesquisa
+- Cada cidade tem status: livre, ocupada ou neutra
+
+**Células rurais:**
+- Colonizar requer 1 Land Token
+- Produzem recursos básicos
+- Expandem o território
+
+**Cidade Neutra (Capital Planetária):**
+- Controlada pela administração
+- Centro de eventos globais
+- Não pode ser conquistada`
   },
   {
     id: 'formacao',
     title: 'Formação de País',
     icon: Flag,
-    content: `Para formar oficialmente um país reconhecido, você precisa:
+    content: `Para formar oficialmente um país reconhecido, você precisa atender aos requisitos.
 
 **Requisitos mínimos:**
 - 3 cidades adquiridas
-- 1 State Token (ST)
+- 1 State Token
 - Capital definida
-- Nome oficial aprovado
+- Nome oficial
 - Tipo de governo escolhido
 
-Após aprovação do Administrador Planetário, seu território muda para "Estado Reconhecido" e ganha acesso a privilégios especiais.`
+O processo é AUTOMÁTICO quando os requisitos são atendidos. Não depende de aprovação manual.
+
+Após formação, o território se torna um "Estado Reconhecido" com acesso a privilégios especiais no ranking planetário.`
+  },
+  {
+    id: 'diplomacia',
+    title: 'Diplomacia e Tratados',
+    icon: Handshake,
+    content: `Territórios podem estabelecer relações diplomáticas entre si.
+
+**Status diplomáticos:**
+- Paz - Estado neutro padrão
+- Tensão - Relações deterioradas
+- Guerra Fria - Hostilidade sem conflito aberto
+- Guerra - Conflito ativo
+- Aliança - Parceria militar
+- Parceiro Comercial - Benefícios econômicos
+
+**Tipos de Tratados:**
+- 🕊️ Paz - Encerra conflitos
+- 📦 Comércio - Benefícios econômicos mútuos
+- ⚔️ Aliança - Defesa mútua
+- 🛡️ Não-Agressão - Compromisso de paz
+- 🔬 Pesquisa - Compartilhamento científico
+- 🗺️ Territorial - Acordos de fronteira`
+  },
+  {
+    id: 'guerra',
+    title: 'Sistema de Guerra',
+    icon: Swords,
+    content: `Territórios podem mudar de dono através de conflitos simulados.
+
+**Como funciona:**
+- Guerras são baseadas em pontos, recursos e estabilidade
+- NÃO são em tempo real
+- Resolvem-se por ciclos automáticos
+- Cada ciclo calcula forças e resolve batalhas
+
+**Formas de transferência territorial:**
+- Venda direta (negociação)
+- Troca negociada
+- Tratados diplomáticos
+- Conquista militar
+
+**Resultado da guerra:**
+- Território pode mudar de dono
+- Recursos são gastos
+- Pontos de guerra determinam vencedor`
+  },
+  {
+    id: 'administracao',
+    title: 'Administração Territorial',
+    icon: Shield,
+    content: `A administração é o coração do jogo. Cada território deve gerenciar suas cidades, células, economia e estabilidade.
+
+**O que administrar:**
+- Cidades e zonas rurais
+- Produção e consumo de recursos
+- Estabilidade política
+- Pesquisa e tecnologia
+- Expansão territorial
+
+**Má administração gera:**
+- Crise e instabilidade
+- Perda de células
+- Rebeliões internas
+- Falência econômica
+
+**Boa administração gera:**
+- Bônus econômicos
+- Mais pontos de pesquisa
+- Colonização mais barata
+- Vantagem diplomática`
+  },
+  {
+    id: 'eras',
+    title: 'Eras Planetárias',
+    icon: Clock,
+    content: `O planeta evolui através de eras que liberam mais território.
+
+**Era da Cartografia (atual):**
+~4.000 células disponíveis
+Fase inicial de mapeamento
+
+**Era da Exploração:**
+Expansão gradual do território jogável
+Novos recursos disponíveis
+
+**Era da Colonização:**
+Novos continentes liberados
+Maior complexidade política
+
+**Era Planetária:**
+Totalidade da terra disponível
+Conflitos em larga escala
+
+Cada era aumenta a complexidade do jogo e adiciona novos recursos e mecânicas.`
   },
   {
     id: 'niveis',
@@ -62,41 +257,30 @@ Após aprovação do Administrador Planetário, seu território muda para "Estad
     content: `Existem dois tipos de pontos que determinam sua evolução:
 
 **PD (Pontos de Desenvolvimento)**
-Ganhos através de construção, administração e eventos de desenvolvimento. Afetam a evolução de nível e expansão.
+Ganhos através de construção, administração e eventos. Afetam evolução de nível e capacidade de expansão.
 
 **PI (Pontos de Influência)**
-Ganhos através de diplomacia, participação em eventos e destaques. Afetam privilégios especiais e ranking.
+Ganhos através de diplomacia, eventos e destaques. Afetam privilégios especiais e posição no ranking.
 
-Ambos os pontos são necessários para subir de nível e desbloquear funcionalidades avançadas.`
+**PP (Pontos de Pesquisa)**
+Gerados por cidades e estabilidade. Usados para exploração e desbloqueio de tecnologias.
+
+Todos os tipos de pontos contribuem para a evolução do território.`
   },
   {
     id: 'eventos',
     title: 'Eventos Planetários',
     icon: Zap,
-    content: `O planeta possui eventos dinâmicos que afetam todos os territórios:
+    content: `O planeta possui eventos dinâmicos que afetam territórios.
 
 **Tipos de Eventos:**
 - **Globais:** Afetam todo o planeta
 - **Regionais:** Afetam regiões específicas
-- **Crises:** Desafios que podem gerar recompensas
+- **Crises:** Desafios com recompensas
 - **Conferências:** Encontros diplomáticos
-- **Guerras Narrativas:** Conflitos simulados
+- **Projetos:** Esforços cooperativos
 
-Participar de eventos gera pontos, tokens e pode alterar o status político do seu território.`
-  },
-  {
-    id: 'administracao',
-    title: 'Administração Planetária',
-    icon: Shield,
-    content: `O Administrador Planetário é responsável por:
-
-- Aprovar novos territórios
-- Distribuir tokens em eventos
-- Resolver disputas territoriais
-- Criar eventos globais
-- Manter a ordem do sistema
-
-A cidade neutra "Zenith Central" serve como capital planetária e sede da administração.`
+Participar de eventos gera pontos, moeda, tokens e pode alterar o status do território.`
   },
 ];
 
@@ -117,6 +301,53 @@ export default function HowToPlayPage() {
             Aprenda as regras e mecânicas do simulador micronacional de TOI-700
           </p>
         </div>
+
+        {/* Quick Start */}
+        <Card className="glass-card border-primary/30 mb-12 max-w-4xl mx-auto">
+          <CardContent className="py-6">
+            <h3 className="font-display font-bold text-lg mb-4 text-center">Início Rápido</h3>
+            <div className="grid md:grid-cols-4 gap-4 text-center">
+              <div className="p-4 rounded-lg bg-muted/30">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <span className="font-bold text-primary">1</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Crie uma conta e receba ₮1.000 iniciais</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <span className="font-bold text-primary">2</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Compre tokens no Mercado para expandir</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <span className="font-bold text-primary">3</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Crie seu território com 1 cidade</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <span className="font-bold text-primary">4</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Administre, expanda e forme um país</p>
+              </div>
+            </div>
+            <div className="flex justify-center gap-4 mt-6">
+              <Link to="/mercado">
+                <Button variant="outline" className="gap-2">
+                  <Wallet className="w-4 h-4" />
+                  Ir ao Mercado
+                </Button>
+              </Link>
+              <Link to="/criar-territorio">
+                <Button className="gap-2">
+                  <Flag className="w-4 h-4" />
+                  Criar Território
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Nav */}
         <div className="flex flex-wrap justify-center gap-2 mb-12">
@@ -161,31 +392,70 @@ export default function HowToPlayPage() {
                     <div className="mt-6 space-y-4 not-prose">
                       <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
                         <h4 className="font-display font-bold text-foreground mb-4">Tipos de Tokens</h4>
-                        <div className="space-y-3">
-                          {Object.entries(tokenDescriptions).map(([key, token]) => (
-                            <div key={key} className="flex items-start gap-3">
-                              <div className={`w-3 h-3 rounded-full bg-${token.color} mt-1.5`} />
-                              <div>
-                                <p className="font-medium text-foreground">{token.name}</p>
-                                <p className="text-sm text-muted-foreground">{token.description}</p>
-                              </div>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Building2 className="w-5 h-5 text-blue-400" />
+                              <span className="font-medium text-blue-400">City Token</span>
                             </div>
-                          ))}
+                            <p className="text-sm text-muted-foreground">Permite fundar 1 cidade</p>
+                            <p className="text-xs text-blue-400 mt-2">Preço: ₮10.000</p>
+                          </div>
+                          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <MapPin className="w-5 h-5 text-green-400" />
+                              <span className="font-medium text-green-400">Land Token</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Coloniza 1 célula rural</p>
+                            <p className="text-xs text-green-400 mt-2">Preço: ₮2.500</p>
+                          </div>
+                          <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Flag className="w-5 h-5 text-purple-400" />
+                              <span className="font-medium text-purple-400">State Token</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Cria oficialmente um país</p>
+                            <p className="text-xs text-purple-400 mt-2">Preço: ₮50.000</p>
+                          </div>
                         </div>
                       </div>
                       <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                        <h4 className="font-display font-bold text-foreground mb-3">Exemplo de Exibição</h4>
-                        <TokenDisplay cityTokens={3} landTokens={5} stateTokens={1} />
+                        <h4 className="font-display font-bold text-foreground mb-3">Seus Tokens</h4>
+                        <TokenDisplay cityTokens={0} landTokens={0} stateTokens={0} />
+                        <Link to="/mercado" className="block mt-4">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Wallet className="w-4 h-4" />
+                            Comprar no Mercado
+                          </Button>
+                        </Link>
                       </div>
-                      <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                        <h4 className="font-medium text-primary mb-2">Como ganhar tokens?</h4>
-                        <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>• Participação ativa no sistema</li>
-                          <li>• Participação em eventos</li>
-                          <li>• Produção de conteúdo narrativo</li>
-                          <li>• Decisões administrativas aprovadas</li>
-                          <li>• Destaques mensais</li>
-                        </ul>
+                    </div>
+                  )}
+
+                  {/* Special content for economy section */}
+                  {section.id === 'economia' && (
+                    <div className="mt-6 not-prose">
+                      <div className="grid grid-cols-5 gap-2">
+                        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                          <Wheat className="w-6 h-6 text-green-400 mx-auto mb-1" />
+                          <p className="text-xs text-muted-foreground">Alimentos</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-center">
+                          <Zap className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
+                          <p className="text-xs text-muted-foreground">Energia</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-center">
+                          <Gem className="w-6 h-6 text-orange-400 mx-auto mb-1" />
+                          <p className="text-xs text-muted-foreground">Minerais</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+                          <Cpu className="w-6 h-6 text-blue-400 mx-auto mb-1" />
+                          <p className="text-xs text-muted-foreground">Tecnologia</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
+                          <Users className="w-6 h-6 text-purple-400 mx-auto mb-1" />
+                          <p className="text-xs text-muted-foreground">Influência</p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -217,6 +487,32 @@ export default function HowToPlayPage() {
               </Card>
             );
           })}
+        </div>
+
+        {/* CTA */}
+        <div className="text-center mt-12">
+          <Card className="glass-card border-primary/30 max-w-2xl mx-auto">
+            <CardContent className="py-8">
+              <h3 className="font-display font-bold text-xl mb-2">Pronto para começar?</h3>
+              <p className="text-muted-foreground mb-6">
+                Crie seu território e comece sua jornada em TOI-700
+              </p>
+              <div className="flex flex-wrap justify-center gap-4">
+                <Link to="/auth">
+                  <Button size="lg" className="gap-2">
+                    <Users className="w-5 h-5" />
+                    Criar Conta
+                  </Button>
+                </Link>
+                <Link to="/territorios">
+                  <Button size="lg" variant="outline" className="gap-2">
+                    <Globe className="w-5 h-5" />
+                    Ver Territórios
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </Layout>
