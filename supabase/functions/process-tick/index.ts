@@ -21,7 +21,9 @@ interface City {
   name: string;
   owner_territory_id: string;
   population: number;
+  urban_population: number;
   profile_id: string;
+  cell_id: string;
   city_profiles: CityProfile;
 }
 
@@ -32,6 +34,18 @@ interface Territory {
   stability: number;
   treasury: number;
   is_neutral: boolean;
+  total_rural_population: number;
+  total_urban_population: number;
+}
+
+interface Cell {
+  id: string;
+  owner_territory_id: string | null;
+  status: string;
+  cell_type: string;
+  rural_population: number;
+  urban_population: number;
+  area_km2: number;
 }
 
 interface ResourceBalance {
@@ -65,6 +79,8 @@ const RANDOM_EVENTS = [
   { type: 'energy_surge', title: 'Pico de Energia', description: 'Geradores operaram com eficiência máxima.', effects: { energy: 60 } },
   { type: 'cultural_event', title: 'Festival Cultural', description: 'Um festival aumentou a moral do povo.', effects: { stability: 5, currency: 50 } },
   { type: 'minor_accident', title: 'Acidente Industrial', description: 'Um pequeno acidente afetou a produção.', effects: { minerals: -30, stability: -1 } },
+  { type: 'population_boom', title: 'Boom Populacional', description: 'Condições favoráveis causaram crescimento populacional.', effects: { population_growth: 5 } },
+  { type: 'migration', title: 'Onda Migratória', description: 'Migrantes rurais se mudaram para áreas urbanas.', effects: { urban_migration: 2 } },
 ];
 
 Deno.serve(async (req) => {
@@ -151,6 +167,15 @@ Deno.serve(async (req) => {
       console.error('Error fetching resource balances:', resourcesError);
     }
 
+    // 5. Get all cells
+    const { data: allCells, error: cellsError } = await supabase
+      .from('cells')
+      .select('id, owner_territory_id, status, cell_type, rural_population, urban_population, area_km2');
+
+    if (cellsError) {
+      console.error('Error fetching cells:', cellsError);
+    }
+
     // Create a map of resource balances by territory
     const resourceMap = new Map<string, ResourceBalance>();
     resourceBalances?.forEach((rb: ResourceBalance) => {
@@ -167,9 +192,24 @@ Deno.serve(async (req) => {
       }
     });
 
-    // 5. Process each territory
+    // Group cells by territory
+    const cellsByTerritory = new Map<string, Cell[]>();
+    allCells?.forEach((cell: any) => {
+      if (cell.owner_territory_id) {
+        const list = cellsByTerritory.get(cell.owner_territory_id) || [];
+        list.push(cell);
+        cellsByTerritory.set(cell.owner_territory_id, list);
+      }
+    });
+
+    // Population tracking for world config
+    let totalActiveUrbanPop = 0;
+    let totalActiveRuralPop = 0;
+
+    // 6. Process each territory
     for (const territory of (territories || [])) {
       const territoryCities = citiesByTerritory.get(territory.id) || [];
+      const territoryCells = cellsByTerritory.get(territory.id) || [];
       let resourceBalance = resourceMap.get(territory.id);
 
       // Initialize resource balance if it doesn't exist
@@ -201,17 +241,42 @@ Deno.serve(async (req) => {
       let newStability = territory.stability;
       let newTreasury = territory.treasury;
 
+      // Calculate territory population from cells
+      let territoryRuralPop = 0;
+      let territoryUrbanPop = 0;
+
+      for (const cell of territoryCells) {
+        territoryRuralPop += cell.rural_population || 0;
+        territoryUrbanPop += cell.urban_population || 0;
+      }
+
+      totalActiveRuralPop += territoryRuralPop;
+      totalActiveUrbanPop += territoryUrbanPop;
+
       // Calculate stability penalty for production
       const stabilityMultiplier = territory.stability < 20 ? 0.5 : 1.0;
 
-      // Production phase - each city produces resources
+      // RURAL PRODUCTION - from rural population
+      // Rural produces: food, minerals, base economy
+      const ruralPopFactor = Math.sqrt(territoryRuralPop / 10000); // Scale factor
+      const ruralFoodProduction = ruralPopFactor * 20 * stabilityMultiplier;
+      const ruralMineralProduction = ruralPopFactor * 10 * stabilityMultiplier;
+      const ruralEconomyBonus = ruralPopFactor * 5; // Currency per tick
+
+      totalFood += ruralFoodProduction;
+      totalMinerals += ruralMineralProduction;
+      newTreasury += ruralEconomyBonus;
+
+      // URBAN PRODUCTION - from cities
       for (const city of territoryCities) {
         const profile = city.city_profiles as CityProfile;
         if (!profile) continue;
 
         const outputs = profile.base_outputs_per_tick || {};
-        const popMultiplier = Math.sqrt(city.population / 1000); // Population affects production
+        const cityUrbanPop = city.urban_population || city.population || 1000;
+        const popMultiplier = Math.sqrt(cityUrbanPop / 1000);
 
+        // Urban produces: currency, tech, research, influence
         totalFood += (outputs.food || 0) * popMultiplier * stabilityMultiplier;
         totalEnergy += (outputs.energy || 0) * popMultiplier * stabilityMultiplier;
         totalMinerals += (outputs.minerals || 0) * popMultiplier * stabilityMultiplier;
@@ -219,16 +284,70 @@ Deno.serve(async (req) => {
         totalResearchGenerated += profile.base_research_per_tick * stabilityMultiplier;
         totalMaintenanceCost += profile.maintenance_cost_per_tick;
 
+        // Urban generates more currency but consumes more resources
+        newTreasury += popMultiplier * 10 * stabilityMultiplier;
+
         citiesProcessed++;
       }
 
-      // Base consumption (population needs food and energy)
-      const baseConsumption = territoryCities.length * 5;
-      totalFood -= baseConsumption;
-      totalEnergy -= baseConsumption;
+      // CONSUMPTION - urban consumes food and energy
+      const urbanPopConsumptionFactor = Math.sqrt(territoryUrbanPop / 5000);
+      const foodConsumption = urbanPopConsumptionFactor * 15;
+      const energyConsumption = urbanPopConsumptionFactor * 10;
+
+      totalFood -= foodConsumption;
+      totalEnergy -= energyConsumption;
 
       // Maintenance costs
       newTreasury -= totalMaintenanceCost;
+
+      // POPULATION GROWTH & MIGRATION
+      let populationGrowth = 0;
+      let urbanMigration = 0;
+
+      // Growth depends on: food, energy, stability, tech
+      if (totalFood > 0 && totalEnergy > 0 && territory.stability > 30) {
+        // Base growth rate: 0.1% per tick
+        const growthRate = 0.001 * (territory.stability / 100) * (1 + totalTech / 1000);
+        populationGrowth = Math.floor(territoryRuralPop * growthRate);
+      }
+
+      // Urban migration: rural to urban when cities exist and stability is high
+      if (territoryCities.length > 0 && territory.stability > 50 && territoryRuralPop > 1000) {
+        // 0.05% migration rate
+        urbanMigration = Math.floor(territoryRuralPop * 0.0005);
+      }
+
+      // Apply population changes to cells
+      if (populationGrowth > 0 || urbanMigration > 0) {
+        // Distribute growth to rural cells
+        const ruralCells = territoryCells.filter(c => c.cell_type === 'rural');
+        if (ruralCells.length > 0 && populationGrowth > 0) {
+          const growthPerCell = Math.ceil(populationGrowth / ruralCells.length);
+          for (const cell of ruralCells) {
+            await supabase
+              .from('cells')
+              .update({ 
+                rural_population: (cell.rural_population || 0) + growthPerCell - (urbanMigration > 0 ? Math.ceil(urbanMigration / ruralCells.length) : 0)
+              })
+              .eq('id', cell.id);
+          }
+        }
+
+        // Add migration to urban cells
+        if (urbanMigration > 0) {
+          const urbanCells = territoryCells.filter(c => c.cell_type === 'urban');
+          if (urbanCells.length > 0) {
+            const migrationPerCell = Math.ceil(urbanMigration / urbanCells.length);
+            for (const cell of urbanCells) {
+              await supabase
+                .from('cells')
+                .update({ urban_population: (cell.urban_population || 0) + migrationPerCell })
+                .eq('id', cell.id);
+            }
+          }
+        }
+      }
 
       // Stability adjustments
       if (totalFood < 0 || totalEnergy < 0 || newTreasury < 0) {
@@ -241,9 +360,14 @@ Deno.serve(async (req) => {
         newStability = Math.min(100, newStability + 1);
       }
 
+      // Urban/Rural imbalance check
+      if (territoryRuralPop > 0 && territoryUrbanPop / territoryRuralPop > 0.6) {
+        // Too many urban, not enough rural - instability
+        newStability -= 2;
+      }
+
       // Crisis check for low stability
       if (newStability < 20 && Math.random() < 0.3) {
-        // 30% chance of crisis event
         const { error: crisisError } = await supabase
           .from('event_logs')
           .insert({
@@ -261,7 +385,6 @@ Deno.serve(async (req) => {
 
       // Contested cell check for very low stability
       if (newStability < 5) {
-        // Mark a random rural cell as potentially contested
         const { data: ruralCells } = await supabase
           .from('cells')
           .select('id')
@@ -312,12 +435,14 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         }, { onConflict: 'territory_id' });
 
-      // Update territory stability and treasury
+      // Update territory with population and stability
       await supabase
         .from('territories')
         .update({
           stability: newStability,
           treasury: Math.round(newTreasury * 100) / 100,
+          total_rural_population: territoryRuralPop + populationGrowth - urbanMigration,
+          total_urban_population: territoryUrbanPop + urbanMigration,
           updated_at: new Date().toISOString(),
         })
         .eq('id', territory.id);
@@ -341,10 +466,23 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Record population stats
+      await supabase
+        .from('population_stats')
+        .insert({
+          territory_id: territory.id,
+          tick_number: newTickNumber,
+          urban_population: territoryUrbanPop + urbanMigration,
+          rural_population: territoryRuralPop + populationGrowth - urbanMigration,
+          migration_in: urbanMigration,
+          migration_out: 0,
+          growth_rate: populationGrowth > 0 ? (populationGrowth / territoryRuralPop) : 0,
+        });
+
       territoriesProcessed++;
     }
 
-    // 6. Process active research projects
+    // 7. Process active research projects
     const { data: researchProjects, error: researchError } = await supabase
       .from('research_projects')
       .select('*')
@@ -352,7 +490,6 @@ Deno.serve(async (req) => {
 
     if (!researchError && researchProjects) {
       for (const project of researchProjects as ResearchProject[]) {
-        // Get contributions for this tick
         const { data: contributions } = await supabase
           .from('research_contributions')
           .select('points_contributed')
@@ -365,7 +502,6 @@ Deno.serve(async (req) => {
 
         const newProgress = project.progress_research_points + totalContributed;
 
-        // Check if project is completed
         if (newProgress >= project.cost_research_points_total) {
           await supabase
             .from('research_projects')
@@ -376,7 +512,6 @@ Deno.serve(async (req) => {
             })
             .eq('id', project.id);
 
-          // If global project targeting a region, reveal the region
           if (project.is_global && project.target_region_id) {
             await supabase
               .from('regions')
@@ -408,7 +543,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 7. Generate random daily events (1-3 events)
+    // 8. Generate random daily events (1-3 events)
     const numEvents = Math.floor(Math.random() * 3) + 1;
     const activeTerritoriesForEvents = territories?.filter(t => !t.is_neutral) || [];
 
@@ -418,8 +553,7 @@ Deno.serve(async (req) => {
       ];
       const randomEvent = RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
 
-      // Apply event effects
-      const effects = randomEvent.effects;
+      const effects = randomEvent.effects as Record<string, any>;
 
       if (effects.currency && randomTerritory.owner_id) {
         await supabase
@@ -438,7 +572,6 @@ Deno.serve(async (req) => {
           .eq('id', randomTerritory.id);
       }
 
-      // Apply resource effects
       const resourceBalance = resourceMap.get(randomTerritory.id);
       if (resourceBalance && (effects.food || effects.energy || effects.minerals || effects.tech)) {
         await supabase
@@ -452,7 +585,6 @@ Deno.serve(async (req) => {
           .eq('id', resourceBalance.id);
       }
 
-      // Log the event
       await supabase
         .from('event_logs')
         .insert({
@@ -467,7 +599,7 @@ Deno.serve(async (req) => {
       eventsGenerated++;
     }
 
-    // 8. Process active wars
+    // 9. Process active wars
     let warsProcessed = 0;
     const { data: activeWars, error: warsError } = await supabase
       .from('wars')
@@ -481,20 +613,22 @@ Deno.serve(async (req) => {
 
         if (!attacker || !defender) continue;
 
-        // Calculate military power
-        // Based on: cities, stability, tech spending, PI (influence)
         const attackerCities = citiesByTerritory.get(attacker.id)?.length || 0;
         const defenderCities = citiesByTerritory.get(defender.id)?.length || 0;
 
         const attackerResources = resourceMap.get(attacker.id);
         const defenderResources = resourceMap.get(defender.id);
 
-        // Power formula: cities * 10 + stability * 0.5 + tech * 2 + PI * 0.3 + random factor
+        // Include population in military power calculation
+        const attackerPop = (attacker.total_urban_population || 0) + (attacker.total_rural_population || 0);
+        const defenderPop = (defender.total_urban_population || 0) + (defender.total_rural_population || 0);
+
         const attackerPower = Math.floor(
           (attackerCities * 10) +
           (attacker.stability * 0.5) +
           ((attackerResources?.tech || 0) * 2) +
           ((attacker as any).pi_points || 0) * 0.3 +
+          (attackerPop / 100000) + // Population bonus
           (Math.random() * 20)
         );
 
@@ -503,20 +637,18 @@ Deno.serve(async (req) => {
           (defender.stability * 0.5) +
           ((defenderResources?.tech || 0) * 2) +
           ((defender as any).pi_points || 0) * 0.3 +
+          (defenderPop / 100000) + // Population bonus
           (Math.random() * 20) +
           10 // Defender bonus
         );
 
-        // Determine round winner
         const attackerWins = attackerPower > defenderPower;
         const pointsGained = Math.abs(attackerPower - defenderPower);
 
-        // Update war scores
         const newAttackerScore = war.attacker_war_score + (attackerWins ? pointsGained : 0);
         const newDefenderScore = war.defender_war_score + (!attackerWins ? pointsGained : 0);
         const newCycles = war.cycles_elapsed + 1;
 
-        // Log war turn
         await supabase
           .from('war_turn_logs')
           .insert({
@@ -527,7 +659,6 @@ Deno.serve(async (req) => {
             result_summary: `${attackerWins ? attacker.name : defender.name} venceu o turno (+${pointsGained} pontos)`,
           });
 
-        // Check victory conditions
         const victoryThreshold = 100;
         const stabilityDefeat = 10;
         let warEnded = false;
@@ -541,13 +672,12 @@ Deno.serve(async (req) => {
         } else if (newDefenderScore >= victoryThreshold) {
           warEnded = true;
           winnerId = defender.id;
-          cellsToTransfer = 0; // Defender keeps their cells
+          cellsToTransfer = 0;
         } else if (defender.stability < stabilityDefeat) {
           warEnded = true;
           winnerId = attacker.id;
-          cellsToTransfer = Math.ceil(((war.target_cells as string[])?.length || 0) * 0.5); // Partial victory
+          cellsToTransfer = Math.ceil(((war.target_cells as string[])?.length || 0) * 0.5);
         } else if (newCycles >= war.max_cycles) {
-          // War ends by timeout - winner is whoever has higher score
           warEnded = true;
           winnerId = newAttackerScore > newDefenderScore ? attacker.id : defender.id;
           cellsToTransfer = winnerId === attacker.id 
@@ -556,7 +686,6 @@ Deno.serve(async (req) => {
         }
 
         if (warEnded) {
-          // Transfer cells to winner
           const targetCells = war.target_cells as string[] || [];
           const cellsToActuallyTransfer = winnerId === attacker.id ? targetCells.slice(0, cellsToTransfer) : [];
 
@@ -577,7 +706,6 @@ Deno.serve(async (req) => {
               });
           }
 
-          // Apply stability penalties
           await supabase
             .from('territories')
             .update({ stability: Math.max(0, attacker.stability - 15) })
@@ -588,7 +716,6 @@ Deno.serve(async (req) => {
             .update({ stability: Math.max(0, defender.stability - 20) })
             .eq('id', defender.id);
 
-          // End war
           await supabase
             .from('wars')
             .update({
@@ -601,7 +728,6 @@ Deno.serve(async (req) => {
             })
             .eq('id', war.id);
 
-          // Log event
           const winnerName = winnerId === attacker.id ? attacker.name : defender.name;
           await supabase
             .from('event_logs')
@@ -620,7 +746,6 @@ Deno.serve(async (req) => {
 
           eventsGenerated++;
         } else {
-          // Update ongoing war
           await supabase
             .from('wars')
             .update({
@@ -639,22 +764,38 @@ Deno.serve(async (req) => {
 
     console.log(`Wars processed: ${warsProcessed}`);
 
-    // 8. Update world config
+    // 10. Calculate latent population (blocked cells)
+    const { data: blockedCells } = await supabase
+      .from('cells')
+      .select('area_km2')
+      .eq('status', 'blocked');
+
+    const latentPopulation = blockedCells?.reduce((sum, cell) => sum + (cell.area_km2 * 500), 0) || 0;
+
+    // 11. Update world config with population stats
     await supabase
       .from('world_config')
       .update({
         season_day: newSeasonDay,
         total_ticks: newTickNumber,
         last_tick_at: new Date().toISOString(),
+        active_urban_population: totalActiveUrbanPop,
+        active_rural_population: totalActiveRuralPop,
+        latent_population: latentPopulation,
         updated_at: new Date().toISOString(),
       })
       .eq('id', worldConfig.id);
 
-    // 9. Complete tick log
+    // 12. Complete tick log
     summary.territories_processed = territoriesProcessed;
     summary.cities_processed = citiesProcessed;
     summary.research_projects_completed = researchProjectsCompleted;
     summary.events_generated = eventsGenerated;
+    summary.population = {
+      active_urban: totalActiveUrbanPop,
+      active_rural: totalActiveRuralPop,
+      latent: latentPopulation,
+    };
 
     await supabase
       .from('tick_logs')
@@ -671,6 +812,7 @@ Deno.serve(async (req) => {
 
     console.log(`Tick #${newTickNumber} completed successfully`);
     console.log(`Territories: ${territoriesProcessed}, Cities: ${citiesProcessed}, Events: ${eventsGenerated}`);
+    console.log(`Population - Urban: ${totalActiveUrbanPop}, Rural: ${totalActiveRuralPop}, Latent: ${latentPopulation}`);
 
     return new Response(
       JSON.stringify({

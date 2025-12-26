@@ -29,11 +29,14 @@ export type Database = {
           id: string
           is_urban_eligible: boolean
           owner_territory_id: string | null
+          population_density: number
           region_id: string | null
+          rural_population: number
           status: Database["public"]["Enums"]["cell_status"]
           unlock_reason: string | null
           unlocked_by_era_id: string | null
           updated_at: string
+          urban_population: number
         }
         Insert: {
           area_km2?: number
@@ -49,11 +52,14 @@ export type Database = {
           id?: string
           is_urban_eligible?: boolean
           owner_territory_id?: string | null
+          population_density?: number
           region_id?: string | null
+          rural_population?: number
           status?: Database["public"]["Enums"]["cell_status"]
           unlock_reason?: string | null
           unlocked_by_era_id?: string | null
           updated_at?: string
+          urban_population?: number
         }
         Update: {
           area_km2?: number
@@ -69,11 +75,14 @@ export type Database = {
           id?: string
           is_urban_eligible?: boolean
           owner_territory_id?: string | null
+          population_density?: number
           region_id?: string | null
+          rural_population?: number
           status?: Database["public"]["Enums"]["cell_status"]
           unlock_reason?: string | null
           unlocked_by_era_id?: string | null
           updated_at?: string
+          urban_population?: number
         }
         Relationships: [
           {
@@ -119,6 +128,7 @@ export type Database = {
           region_id: string | null
           status: Database["public"]["Enums"]["city_status"]
           updated_at: string
+          urban_population: number
         }
         Insert: {
           cell_id?: string | null
@@ -132,6 +142,7 @@ export type Database = {
           region_id?: string | null
           status?: Database["public"]["Enums"]["city_status"]
           updated_at?: string
+          urban_population?: number
         }
         Update: {
           cell_id?: string | null
@@ -145,6 +156,7 @@ export type Database = {
           region_id?: string | null
           status?: Database["public"]["Enums"]["city_status"]
           updated_at?: string
+          urban_population?: number
         }
         Relationships: [
           {
@@ -608,6 +620,50 @@ export type Database = {
         }
         Relationships: []
       }
+      population_stats: {
+        Row: {
+          created_at: string
+          growth_rate: number
+          id: string
+          migration_in: number
+          migration_out: number
+          rural_population: number
+          territory_id: string | null
+          tick_number: number
+          urban_population: number
+        }
+        Insert: {
+          created_at?: string
+          growth_rate?: number
+          id?: string
+          migration_in?: number
+          migration_out?: number
+          rural_population?: number
+          territory_id?: string | null
+          tick_number: number
+          urban_population?: number
+        }
+        Update: {
+          created_at?: string
+          growth_rate?: number
+          id?: string
+          migration_in?: number
+          migration_out?: number
+          rural_population?: number
+          territory_id?: string | null
+          tick_number?: number
+          urban_population?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "population_stats_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -969,6 +1025,8 @@ export type Database = {
           stability: number
           status: Database["public"]["Enums"]["territory_status"]
           style: Database["public"]["Enums"]["territory_style"]
+          total_rural_population: number
+          total_urban_population: number
           treasury: number
           updated_at: string
         }
@@ -992,6 +1050,8 @@ export type Database = {
           stability?: number
           status?: Database["public"]["Enums"]["territory_status"]
           style?: Database["public"]["Enums"]["territory_style"]
+          total_rural_population?: number
+          total_urban_population?: number
           treasury?: number
           updated_at?: string
         }
@@ -1015,6 +1075,8 @@ export type Database = {
           stability?: number
           status?: Database["public"]["Enums"]["territory_status"]
           style?: Database["public"]["Enums"]["territory_style"]
+          total_rural_population?: number
+          total_urban_population?: number
           treasury?: number
           updated_at?: string
         }
@@ -1786,44 +1848,56 @@ export type Database = {
       }
       world_config: {
         Row: {
+          active_rural_population: number
+          active_urban_population: number
           cell_size_km2_default: number
           created_at: string
           id: string
           initial_playable_land_km2: number
           last_tick_at: string | null
+          latent_population: number
           max_listings_per_territory: number
           max_urban_ratio: number
           season_day: number
           tick_interval_hours: number
           total_planet_land_km2: number
+          total_planet_population: number
           total_ticks: number | null
           updated_at: string
         }
         Insert: {
+          active_rural_population?: number
+          active_urban_population?: number
           cell_size_km2_default?: number
           created_at?: string
           id?: string
           initial_playable_land_km2?: number
           last_tick_at?: string | null
+          latent_population?: number
           max_listings_per_territory?: number
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
           total_planet_land_km2?: number
+          total_planet_population?: number
           total_ticks?: number | null
           updated_at?: string
         }
         Update: {
+          active_rural_population?: number
+          active_urban_population?: number
           cell_size_km2_default?: number
           created_at?: string
           id?: string
           initial_playable_land_km2?: number
           last_tick_at?: string | null
+          latent_population?: number
           max_listings_per_territory?: number
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
           total_planet_land_km2?: number
+          total_planet_population?: number
           total_ticks?: number | null
           updated_at?: string
         }

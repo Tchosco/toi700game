@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X, Shield, LogIn, LogOut, TrendingUp, User, Grid3X3, Swords } from 'lucide-react';
+import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X, Shield, LogIn, LogOut, TrendingUp, User, Grid3X3, Swords, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +8,7 @@ const navLinks = [
   { to: '/', label: 'Início', icon: Globe },
   { to: '/mapa', label: 'Mapa', icon: Map },
   { to: '/celulas', label: 'Células', icon: Grid3X3 },
+  { to: '/populacao', label: 'População', icon: Users },
   { to: '/mercado', label: 'Mercado', icon: TrendingUp },
   { to: '/diplomacia', label: 'Diplomacia', icon: Swords },
   { to: '/como-jogar', label: 'Como Jogar', icon: BookOpen },
