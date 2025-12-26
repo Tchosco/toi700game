@@ -21,6 +21,12 @@ import BlocsPage from "./pages/BlocsPage";
 import StateLawsPage from "./pages/StateLawsPage";
 import CreateLawPage from "./pages/CreateLawPage";
 import LegalHistoryPage from "./pages/LegalHistoryPage";
+import StateCustomizationPage from "./pages/StateCustomizationPage";
+import CellDetailPage from "./pages/CellDetailPage";
+import PlanetaryCouncilPage from "./pages/PlanetaryCouncilPage";
+import TradeChamberPage from "./pages/TradeChamberPage";
+import PrivateRoomsPage from "./pages/PrivateRoomsPage";
+import DiplomaticHistoryPage from "./pages/DiplomaticHistoryPage";
 import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTerritories from "./pages/admin/AdminTerritories";
@@ -70,6 +76,12 @@ const App = () => (
             <Route path="/leis" element={<StateLawsPage />} />
             <Route path="/leis/criar" element={<CreateLawPage />} />
             <Route path="/historico-legal" element={<LegalHistoryPage />} />
+            <Route path="/customizacao" element={<StateCustomizationPage />} />
+            <Route path="/celula/:id" element={<CellDetailPage />} />
+            <Route path="/conselho-planetario" element={<PlanetaryCouncilPage />} />
+            <Route path="/camara-comercio" element={<TradeChamberPage />} />
+            <Route path="/salas-diplomaticas" element={<PrivateRoomsPage />} />
+            <Route path="/historico-diplomatico" element={<DiplomaticHistoryPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/territories" element={<AdminTerritories />} />
