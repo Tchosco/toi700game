@@ -18,6 +18,9 @@ import PopulationPage from "./pages/PopulationPage";
 import ConstitutionPage from "./pages/ConstitutionPage";
 import ParliamentPage from "./pages/ParliamentPage";
 import BlocsPage from "./pages/BlocsPage";
+import StateLawsPage from "./pages/StateLawsPage";
+import CreateLawPage from "./pages/CreateLawPage";
+import LegalHistoryPage from "./pages/LegalHistoryPage";
 import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTerritories from "./pages/admin/AdminTerritories";
@@ -61,6 +64,12 @@ const App = () => (
             <Route path="/celulas" element={<CellMapPage />} />
             <Route path="/diplomacia" element={<DiplomacyPage />} />
             <Route path="/populacao" element={<PopulationPage />} />
+            <Route path="/constituicao" element={<ConstitutionPage />} />
+            <Route path="/parlamento" element={<ParliamentPage />} />
+            <Route path="/blocos" element={<BlocsPage />} />
+            <Route path="/leis" element={<StateLawsPage />} />
+            <Route path="/leis/criar" element={<CreateLawPage />} />
+            <Route path="/historico-legal" element={<LegalHistoryPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/territories" element={<AdminTerritories />} />
