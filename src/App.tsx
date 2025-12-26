@@ -16,6 +16,7 @@ import AdminTerritories from "./pages/admin/AdminTerritories";
 import AdminTokens from "./pages/admin/AdminTokens";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminCities from "./pages/admin/AdminCities";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/admin/tokens" element={<AdminTokens />} />
             <Route path="/admin/events" element={<AdminEvents />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/cities" element={<AdminCities />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
