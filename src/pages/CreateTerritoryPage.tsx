@@ -174,19 +174,27 @@ export default function CreateTerritoryPage() {
 
       if (error) {
         console.error('Edge function error:', error);
-        throw new Error(error.message || 'Erro ao criar território.');
+        // Build detailed error message for debugging
+        const errorDetail = error.message || 'Erro ao criar território.';
+        throw new Error(`[Função] ${errorDetail}`);
       }
 
       if (!data?.success) {
         // Handle specific error codes with user-friendly messages
         const errorMessage = data?.error || 'Erro desconhecido ao criar território.';
-        const errorCode = data?.code;
+        const errorCode = data?.code || 'UNKNOWN';
+        const errorTable = data?.table || '';
 
         if (errorCode === 'AUTH_REQUIRED' || errorCode === 'INVALID_SESSION') {
           navigate('/auth');
         }
         
-        throw new Error(errorMessage);
+        // Build detailed error message including table name for debugging
+        const detailedError = errorTable 
+          ? `${errorMessage} (Tabela: ${errorTable}, Código: ${errorCode})`
+          : `${errorMessage} (Código: ${errorCode})`;
+        
+        throw new Error(detailedError);
       }
 
       toast({
@@ -197,9 +205,11 @@ export default function CreateTerritoryPage() {
       navigate('/territorios');
     } catch (error) {
       console.error('Create territory error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+      
       toast({
         title: 'Erro ao criar território',
-        description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

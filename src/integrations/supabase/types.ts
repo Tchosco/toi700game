@@ -2729,6 +2729,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      atomic_create_territory: {
+        Args: {
+          p_capital_name: string
+          p_government_type: Database["public"]["Enums"]["government_type"]
+          p_lore: string
+          p_name: string
+          p_region_id: string
+          p_style: Database["public"]["Enums"]["territory_style"]
+          p_user_id: string
+        }
+        Returns: Json
+      }
       atomic_deduct_currency: {
         Args: { p_amount: number; p_user_id: string }
         Returns: Json
