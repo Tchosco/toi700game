@@ -16,7 +16,10 @@ import {
   Grid3X3,
   Clock,
   Compass,
-  Settings
+  Settings,
+  TrendingUp,
+  Swords,
+  FlaskConical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +35,9 @@ const navItems = [
   { href: '/admin/cells', label: 'Células', icon: Grid3X3 },
   { href: '/admin/eras', label: 'Eras', icon: Clock },
   { href: '/admin/projects', label: 'Projetos', icon: Compass },
+  { href: '/admin/market', label: 'Mercado', icon: TrendingUp },
+  { href: '/admin/research', label: 'Pesquisa', icon: FlaskConical },
+  { href: '/admin/diplomacy', label: 'Diplomacia', icon: Swords },
   { href: '/admin/config', label: 'Configurações', icon: Settings },
   { href: '/admin/tokens', label: 'Tokens', icon: Coins },
   { href: '/admin/events', label: 'Eventos', icon: CalendarDays },
