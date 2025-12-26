@@ -22,6 +22,9 @@ import AdminCells from "./pages/admin/AdminCells";
 import AdminEras from "./pages/admin/AdminEras";
 import AdminProjects from "./pages/admin/AdminProjects";
 import AdminConfig from "./pages/admin/AdminConfig";
+import AdminMarket from "./pages/admin/AdminMarket";
+import AdminResearch from "./pages/admin/AdminResearch";
+import AdminDiplomacy from "./pages/admin/AdminDiplomacy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +55,9 @@ const App = () => (
             <Route path="/admin/eras" element={<AdminEras />} />
             <Route path="/admin/projects" element={<AdminProjects />} />
             <Route path="/admin/config" element={<AdminConfig />} />
+            <Route path="/admin/market" element={<AdminMarket />} />
+            <Route path="/admin/research" element={<AdminResearch />} />
+            <Route path="/admin/diplomacy" element={<AdminDiplomacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

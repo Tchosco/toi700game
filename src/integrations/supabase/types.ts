@@ -155,6 +155,98 @@ export type Database = {
           },
         ]
       }
+      currency_transactions: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          related_territory_id: string | null
+          related_user_id: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          related_territory_id?: string | null
+          related_user_id?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          related_territory_id?: string | null
+          related_user_id?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "currency_transactions_related_territory_id_fkey"
+            columns: ["related_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diplomatic_relations: {
+        Row: {
+          created_at: string
+          id: string
+          last_interaction_at: string | null
+          relation_score: number
+          status: Database["public"]["Enums"]["diplomatic_status"]
+          territory_a_id: string
+          territory_b_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_interaction_at?: string | null
+          relation_score?: number
+          status?: Database["public"]["Enums"]["diplomatic_status"]
+          territory_a_id: string
+          territory_b_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_interaction_at?: string | null
+          relation_score?: number
+          status?: Database["public"]["Enums"]["diplomatic_status"]
+          territory_a_id?: string
+          territory_b_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diplomatic_relations_territory_a_id_fkey"
+            columns: ["territory_a_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diplomatic_relations_territory_b_id_fkey"
+            columns: ["territory_b_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exploration_projects: {
         Row: {
           cells_completed: number
@@ -333,6 +425,36 @@ export type Database = {
           },
         ]
       }
+      player_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          total_earned: number
+          total_spent: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -420,11 +542,98 @@ export type Database = {
         }
         Relationships: []
       }
+      resource_market: {
+        Row: {
+          base_price: number
+          created_at: string
+          current_price: number
+          demand: number
+          id: string
+          price_volatility: number
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          supply: number
+          updated_at: string
+        }
+        Insert: {
+          base_price: number
+          created_at?: string
+          current_price: number
+          demand?: number
+          id?: string
+          price_volatility?: number
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          supply?: number
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number
+          created_at?: string
+          current_price?: number
+          demand?: number
+          id?: string
+          price_volatility?: number
+          resource_type?: Database["public"]["Enums"]["resource_type"]
+          supply?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      resource_orders: {
+        Row: {
+          created_at: string
+          filled_quantity: number
+          id: string
+          order_type: string
+          price_per_unit: number
+          quantity: number
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          status: string
+          territory_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filled_quantity?: number
+          id?: string
+          order_type: string
+          price_per_unit: number
+          quantity: number
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          status?: string
+          territory_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filled_quantity?: number
+          id?: string
+          order_type?: string
+          price_per_unit?: number
+          quantity?: number
+          resource_type?: Database["public"]["Enums"]["resource_type"]
+          status?: string
+          territory_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_orders_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       territories: {
         Row: {
           accepted_statute: boolean
           capital_city_id: string | null
           created_at: string
+          economy_rating: number
           flag_url: string | null
           government_type: Database["public"]["Enums"]["government_type"]
           id: string
@@ -435,6 +644,8 @@ export type Database = {
           pd_points: number
           pi_points: number
           region_id: string | null
+          research_bonus: number
+          stability: number
           status: Database["public"]["Enums"]["territory_status"]
           style: Database["public"]["Enums"]["territory_style"]
           updated_at: string
@@ -443,6 +654,7 @@ export type Database = {
           accepted_statute?: boolean
           capital_city_id?: string | null
           created_at?: string
+          economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
           id?: string
@@ -453,6 +665,8 @@ export type Database = {
           pd_points?: number
           pi_points?: number
           region_id?: string | null
+          research_bonus?: number
+          stability?: number
           status?: Database["public"]["Enums"]["territory_status"]
           style?: Database["public"]["Enums"]["territory_style"]
           updated_at?: string
@@ -461,6 +675,7 @@ export type Database = {
           accepted_statute?: boolean
           capital_city_id?: string | null
           created_at?: string
+          economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
           id?: string
@@ -471,6 +686,8 @@ export type Database = {
           pd_points?: number
           pi_points?: number
           region_id?: string | null
+          research_bonus?: number
+          stability?: number
           status?: Database["public"]["Enums"]["territory_status"]
           style?: Database["public"]["Enums"]["territory_style"]
           updated_at?: string
@@ -540,6 +757,230 @@ export type Database = {
           },
         ]
       }
+      territory_research: {
+        Row: {
+          created_at: string
+          id: string
+          research_points: number
+          research_rate: number
+          territory_id: string
+          total_research_generated: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          research_points?: number
+          research_rate?: number
+          territory_id: string
+          total_research_generated?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          research_points?: number
+          research_rate?: number
+          territory_id?: string
+          total_research_generated?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_research_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: true
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territory_resources: {
+        Row: {
+          amount: number
+          consumption_rate: number
+          created_at: string
+          id: string
+          production_rate: number
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          territory_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          consumption_rate?: number
+          created_at?: string
+          id?: string
+          production_rate?: number
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          territory_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          consumption_rate?: number
+          created_at?: string
+          id?: string
+          production_rate?: number
+          resource_type?: Database["public"]["Enums"]["resource_type"]
+          territory_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_resources_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territory_transfers: {
+        Row: {
+          cell_id: string | null
+          created_at: string
+          from_territory_id: string | null
+          id: string
+          notes: string | null
+          price: number | null
+          territory_id: string | null
+          to_territory_id: string | null
+          transfer_type: string
+          treaty_id: string | null
+          war_id: string | null
+        }
+        Insert: {
+          cell_id?: string | null
+          created_at?: string
+          from_territory_id?: string | null
+          id?: string
+          notes?: string | null
+          price?: number | null
+          territory_id?: string | null
+          to_territory_id?: string | null
+          transfer_type: string
+          treaty_id?: string | null
+          war_id?: string | null
+        }
+        Update: {
+          cell_id?: string | null
+          created_at?: string
+          from_territory_id?: string | null
+          id?: string
+          notes?: string | null
+          price?: number | null
+          territory_id?: string | null
+          to_territory_id?: string | null
+          transfer_type?: string
+          treaty_id?: string | null
+          war_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_transfers_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_transfers_from_territory_id_fkey"
+            columns: ["from_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_transfers_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_transfers_to_territory_id_fkey"
+            columns: ["to_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_transfers_treaty_id_fkey"
+            columns: ["treaty_id"]
+            isOneToOne: false
+            referencedRelation: "treaties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_transfers_war_id_fkey"
+            columns: ["war_id"]
+            isOneToOne: false
+            referencedRelation: "wars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      token_market: {
+        Row: {
+          available_quantity: number
+          created_at: string
+          id: string
+          is_active: boolean
+          price_per_unit: number
+          token_type: string
+          total_sold: number
+          updated_at: string
+        }
+        Insert: {
+          available_quantity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_per_unit: number
+          token_type: string
+          total_sold?: number
+          updated_at?: string
+        }
+        Update: {
+          available_quantity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_per_unit?: number
+          token_type?: string
+          total_sold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      token_purchases: {
+        Row: {
+          created_at: string
+          id: string
+          price_paid: number
+          quantity: number
+          token_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price_paid: number
+          quantity: number
+          token_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price_paid?: number
+          quantity?: number
+          token_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       token_transactions: {
         Row: {
           admin_id: string | null
@@ -569,6 +1010,69 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      treaties: {
+        Row: {
+          accepted_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          proposed_by: string
+          starts_at: string | null
+          status: string
+          terms: string | null
+          territory_a_id: string
+          territory_b_id: string
+          title: string
+          treaty_type: Database["public"]["Enums"]["treaty_type"]
+          updated_at: string
+        }
+        Insert: {
+          accepted_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          proposed_by: string
+          starts_at?: string | null
+          status?: string
+          terms?: string | null
+          territory_a_id: string
+          territory_b_id: string
+          title: string
+          treaty_type: Database["public"]["Enums"]["treaty_type"]
+          updated_at?: string
+        }
+        Update: {
+          accepted_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          proposed_by?: string
+          starts_at?: string | null
+          status?: string
+          terms?: string | null
+          territory_a_id?: string
+          territory_b_id?: string
+          title?: string
+          treaty_type?: Database["public"]["Enums"]["treaty_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treaties_territory_a_id_fkey"
+            columns: ["territory_a_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treaties_territory_b_id_fkey"
+            columns: ["territory_b_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -618,6 +1122,141 @@ export type Database = {
         }
         Relationships: []
       }
+      war_battles: {
+        Row: {
+          attacker_damage: number
+          attacker_roll: number
+          attacker_strength: number
+          battle_log: string | null
+          created_at: string
+          cycle_number: number
+          defender_damage: number
+          defender_roll: number
+          defender_strength: number
+          id: string
+          war_id: string
+          winner: string | null
+        }
+        Insert: {
+          attacker_damage: number
+          attacker_roll: number
+          attacker_strength: number
+          battle_log?: string | null
+          created_at?: string
+          cycle_number: number
+          defender_damage: number
+          defender_roll: number
+          defender_strength: number
+          id?: string
+          war_id: string
+          winner?: string | null
+        }
+        Update: {
+          attacker_damage?: number
+          attacker_roll?: number
+          attacker_strength?: number
+          battle_log?: string | null
+          created_at?: string
+          cycle_number?: number
+          defender_damage?: number
+          defender_roll?: number
+          defender_strength?: number
+          id?: string
+          war_id?: string
+          winner?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "war_battles_war_id_fkey"
+            columns: ["war_id"]
+            isOneToOne: false
+            referencedRelation: "wars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wars: {
+        Row: {
+          attacker_id: string
+          attacker_resources_spent: number
+          attacker_war_score: number
+          created_at: string
+          cycles_elapsed: number
+          declared_at: string
+          defender_id: string
+          defender_resources_spent: number
+          defender_war_score: number
+          description: string | null
+          ended_at: string | null
+          id: string
+          max_cycles: number
+          status: Database["public"]["Enums"]["war_status"]
+          title: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          attacker_id: string
+          attacker_resources_spent?: number
+          attacker_war_score?: number
+          created_at?: string
+          cycles_elapsed?: number
+          declared_at?: string
+          defender_id: string
+          defender_resources_spent?: number
+          defender_war_score?: number
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          max_cycles?: number
+          status?: Database["public"]["Enums"]["war_status"]
+          title: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          attacker_id?: string
+          attacker_resources_spent?: number
+          attacker_war_score?: number
+          created_at?: string
+          cycles_elapsed?: number
+          declared_at?: string
+          defender_id?: string
+          defender_resources_spent?: number
+          defender_war_score?: number
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          max_cycles?: number
+          status?: Database["public"]["Enums"]["war_status"]
+          title?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wars_attacker_id_fkey"
+            columns: ["attacker_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wars_defender_id_fkey"
+            columns: ["defender_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wars_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -636,6 +1275,13 @@ export type Database = {
       cell_status: "blocked" | "explored" | "colonized"
       cell_type: "rural" | "urban" | "neutral" | "blocked"
       city_status: "free" | "occupied" | "neutral"
+      diplomatic_status:
+        | "peace"
+        | "tension"
+        | "cold_war"
+        | "war"
+        | "alliance"
+        | "trade_partner"
       event_type: "global" | "regional" | "crisis" | "conference" | "war"
       government_type:
         | "monarchy"
@@ -644,6 +1290,7 @@ export type Database = {
         | "oligarchy"
         | "democracy"
         | "dictatorship"
+      resource_type: "food" | "energy" | "minerals" | "technology" | "influence"
       territory_level:
         | "colony"
         | "autonomous"
@@ -658,6 +1305,14 @@ export type Database = {
         | "inactive"
       territory_style: "cultural" | "commercial" | "technological" | "military"
       token_type: "city" | "land" | "state"
+      treaty_type:
+        | "peace"
+        | "trade"
+        | "alliance"
+        | "non_aggression"
+        | "research"
+        | "territorial"
+      war_status: "declared" | "active" | "ceasefire" | "ended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -789,6 +1444,14 @@ export const Constants = {
       cell_status: ["blocked", "explored", "colonized"],
       cell_type: ["rural", "urban", "neutral", "blocked"],
       city_status: ["free", "occupied", "neutral"],
+      diplomatic_status: [
+        "peace",
+        "tension",
+        "cold_war",
+        "war",
+        "alliance",
+        "trade_partner",
+      ],
       event_type: ["global", "regional", "crisis", "conference", "war"],
       government_type: [
         "monarchy",
@@ -798,6 +1461,7 @@ export const Constants = {
         "democracy",
         "dictatorship",
       ],
+      resource_type: ["food", "energy", "minerals", "technology", "influence"],
       territory_level: [
         "colony",
         "autonomous",
@@ -814,6 +1478,15 @@ export const Constants = {
       ],
       territory_style: ["cultural", "commercial", "technological", "military"],
       token_type: ["city", "land", "state"],
+      treaty_type: [
+        "peace",
+        "trade",
+        "alliance",
+        "non_aggression",
+        "research",
+        "territorial",
+      ],
+      war_status: ["declared", "active", "ceasefire", "ended"],
     },
   },
 } as const
