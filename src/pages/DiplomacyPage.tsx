@@ -25,6 +25,8 @@ export default function DiplomacyPage() {
   const [cellsForSale, setCellsForSale] = useState<any[]>([]);
   const [myTerritory, setMyTerritory] = useState<any>(null);
   const [otherTerritories, setOtherTerritories] = useState<any[]>([]);
+  const [myResources, setMyResources] = useState<any[]>([]);
+  const [myCells, setMyCells] = useState<any[]>([]);
   
   // War declaration form state
   const [warDialogOpen, setWarDialogOpen] = useState(false);
@@ -33,6 +35,14 @@ export default function DiplomacyPage() {
   const [selectedCells, setSelectedCells] = useState<string[]>([]);
   const [warTitle, setWarTitle] = useState('');
   const [declaring, setDeclaring] = useState(false);
+
+  // Trade deal form state
+  const [tradeDialogOpen, setTradeDialogOpen] = useState(false);
+  const [tradeTargetTerritory, setTradeTargetTerritory] = useState<string>('');
+  const [proposing, setProposing] = useState(false);
+  const [offer, setOffer] = useState({ currency: 0, food: 0, energy: 0, minerals: 0, tech: 0, cells: [] as string[] });
+  const [request, setRequest] = useState({ currency: 0, food: 0, energy: 0, minerals: 0, tech: 0, cells: [] as string[] });
+  const [tradeTargetCells, setTradeTargetCells] = useState<any[]>([]);
 
   useEffect(() => { fetchData(); }, [user]);
 
@@ -65,6 +75,14 @@ export default function DiplomacyPage() {
         
         if (territoriesRes.data && territory) {
           setOtherTerritories(territoriesRes.data.filter(t => t.id !== territory.id));
+          
+          // Fetch my resources
+          const { data: resources } = await supabase.from('territory_resources').select('*').eq('territory_id', territory.id);
+          setMyResources(resources || []);
+          
+          // Fetch my cells
+          const { data: cells } = await supabase.from('cells').select('id, cell_type, is_urban_eligible, region_id, regions(name)').eq('owner_territory_id', territory.id).eq('status', 'colonized');
+          setMyCells(cells || []);
         }
       }
     } catch (error) {
@@ -73,6 +91,24 @@ export default function DiplomacyPage() {
       setLoading(false);
     }
   }
+
+  async function fetchTradeTargetCells(territoryId: string) {
+    const { data } = await supabase
+      .from('cells')
+      .select('id, cell_type, is_urban_eligible, region_id, regions(name)')
+      .eq('owner_territory_id', territoryId)
+      .eq('status', 'colonized');
+    setTradeTargetCells(data || []);
+  }
+
+  useEffect(() => {
+    if (tradeTargetTerritory) {
+      fetchTradeTargetCells(tradeTargetTerritory);
+    } else {
+      setTradeTargetCells([]);
+      setRequest(r => ({ ...r, cells: [] }));
+    }
+  }, [tradeTargetTerritory]);
 
   async function fetchTargetCells(territoryId: string) {
     const { data } = await supabase
@@ -131,6 +167,78 @@ export default function DiplomacyPage() {
     } finally {
       setDeclaring(false);
     }
+  }
+
+  async function handleProposeTrade() {
+    if (!tradeTargetTerritory) {
+      toast({ title: 'Erro', description: 'Selecione um território destinatário.', variant: 'destructive' });
+      return;
+    }
+
+    const hasOffer = offer.currency > 0 || offer.food > 0 || offer.energy > 0 || offer.minerals > 0 || offer.tech > 0 || offer.cells.length > 0;
+    const hasRequest = request.currency > 0 || request.food > 0 || request.energy > 0 || request.minerals > 0 || request.tech > 0 || request.cells.length > 0;
+
+    if (!hasOffer && !hasRequest) {
+      toast({ title: 'Erro', description: 'A proposta deve incluir uma oferta ou um pedido.', variant: 'destructive' });
+      return;
+    }
+
+    setProposing(true);
+    try {
+      const targetTerritory = otherTerritories.find(t => t.id === tradeTargetTerritory);
+      
+      const { error } = await supabase.from('trade_deals').insert({
+        from_territory_id: myTerritory.id,
+        to_territory_id: tradeTargetTerritory,
+        from_user_id: user!.id,
+        to_user_id: targetTerritory.owner_id,
+        offer,
+        request,
+        status: 'proposed',
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Proposta Enviada!', description: `Proposta de troca enviada para ${targetTerritory.name}.` });
+      setTradeDialogOpen(false);
+      resetTradeForm();
+      fetchData();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setProposing(false);
+    }
+  }
+
+  function resetTradeForm() {
+    setTradeTargetTerritory('');
+    setOffer({ currency: 0, food: 0, energy: 0, minerals: 0, tech: 0, cells: [] });
+    setRequest({ currency: 0, food: 0, energy: 0, minerals: 0, tech: 0, cells: [] });
+  }
+
+  function formatDealSummary(deal: { currency?: number; food?: number; energy?: number; minerals?: number; tech?: number; cells?: string[] }) {
+    const parts: string[] = [];
+    if (deal.currency && deal.currency > 0) parts.push(`₮${deal.currency}`);
+    if (deal.food && deal.food > 0) parts.push(`🌾${deal.food}`);
+    if (deal.energy && deal.energy > 0) parts.push(`⚡${deal.energy}`);
+    if (deal.minerals && deal.minerals > 0) parts.push(`🪨${deal.minerals}`);
+    if (deal.tech && deal.tech > 0) parts.push(`🔬${deal.tech}`);
+    if (deal.cells && deal.cells.length > 0) parts.push(`📍${deal.cells.length} células`);
+    return parts.length > 0 ? parts.join(', ') : 'Nada';
+  }
+
+  function toggleOfferCell(cellId: string) {
+    setOffer(o => ({
+      ...o,
+      cells: o.cells.includes(cellId) ? o.cells.filter(c => c !== cellId) : [...o.cells, cellId]
+    }));
+  }
+
+  function toggleRequestCell(cellId: string) {
+    setRequest(r => ({
+      ...r,
+      cells: r.cells.includes(cellId) ? r.cells.filter(c => c !== cellId) : [...r.cells, cellId]
+    }));
   }
 
   async function handleAcceptDeal(dealId: string) {
@@ -296,7 +404,147 @@ export default function DiplomacyPage() {
 
           <TabsContent value="trades">
             <Card className="glass-card">
-              <CardHeader><CardTitle>Propostas de Troca</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Handshake className="text-primary" />Propostas de Troca</CardTitle>
+                  <CardDescription>Negocie recursos, moeda e células com outros territórios.</CardDescription>
+                </div>
+                {myTerritory && (
+                  <Dialog open={tradeDialogOpen} onOpenChange={setTradeDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button><Plus className="w-4 h-4 mr-2" />Propor Troca</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2"><Handshake className="text-primary" />Nova Proposta de Troca</DialogTitle>
+                        <DialogDescription>Selecione o que você oferece e o que deseja em troca.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-6 py-4">
+                        <div className="space-y-2">
+                          <Label>Território Destinatário</Label>
+                          <Select value={tradeTargetTerritory} onValueChange={setTradeTargetTerritory}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um território" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover border border-border z-50">
+                              {otherTerritories.map(t => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Offer Section */}
+                          <div className="space-y-4 p-4 rounded-lg border border-green-500/30 bg-green-500/5">
+                            <h4 className="font-semibold text-green-400 flex items-center gap-2">🎁 Sua Oferta</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Moeda (₮)</Label>
+                                <Input type="number" min={0} value={offer.currency || ''} onChange={e => setOffer(o => ({ ...o, currency: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">🌾 Food</Label>
+                                <Input type="number" min={0} value={offer.food || ''} onChange={e => setOffer(o => ({ ...o, food: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">⚡ Energy</Label>
+                                <Input type="number" min={0} value={offer.energy || ''} onChange={e => setOffer(o => ({ ...o, energy: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">🪨 Minerals</Label>
+                                <Input type="number" min={0} value={offer.minerals || ''} onChange={e => setOffer(o => ({ ...o, minerals: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">🔬 Tech</Label>
+                                <Input type="number" min={0} value={offer.tech || ''} onChange={e => setOffer(o => ({ ...o, tech: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                            </div>
+                            {myCells.length > 0 && (
+                              <div className="space-y-2">
+                                <Label className="text-xs">Células ({offer.cells.length} selecionadas)</Label>
+                                <ScrollArea className="h-24 rounded-md border p-2">
+                                  <div className="space-y-1">
+                                    {myCells.map(cell => (
+                                      <div key={cell.id} className="flex items-center space-x-2 p-1 rounded hover:bg-muted/50">
+                                        <Checkbox 
+                                          id={`offer-${cell.id}`} 
+                                          checked={offer.cells.includes(cell.id)}
+                                          onCheckedChange={() => toggleOfferCell(cell.id)}
+                                        />
+                                        <label htmlFor={`offer-${cell.id}`} className="flex-1 cursor-pointer text-xs">
+                                          <span className="font-mono">{cell.id.slice(0, 6)}...</span>
+                                          <span className="ml-1">{cell.cell_type === 'urban' ? '🏙️' : '🌾'}</span>
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </ScrollArea>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Request Section */}
+                          <div className="space-y-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                            <h4 className="font-semibold text-amber-400 flex items-center gap-2">📥 Seu Pedido</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Moeda (₮)</Label>
+                                <Input type="number" min={0} value={request.currency || ''} onChange={e => setRequest(r => ({ ...r, currency: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">🌾 Food</Label>
+                                <Input type="number" min={0} value={request.food || ''} onChange={e => setRequest(r => ({ ...r, food: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">⚡ Energy</Label>
+                                <Input type="number" min={0} value={request.energy || ''} onChange={e => setRequest(r => ({ ...r, energy: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">🪨 Minerals</Label>
+                                <Input type="number" min={0} value={request.minerals || ''} onChange={e => setRequest(r => ({ ...r, minerals: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">🔬 Tech</Label>
+                                <Input type="number" min={0} value={request.tech || ''} onChange={e => setRequest(r => ({ ...r, tech: Number(e.target.value) || 0 }))} placeholder="0" />
+                              </div>
+                            </div>
+                            {tradeTargetTerritory && tradeTargetCells.length > 0 && (
+                              <div className="space-y-2">
+                                <Label className="text-xs">Células ({request.cells.length} selecionadas)</Label>
+                                <ScrollArea className="h-24 rounded-md border p-2">
+                                  <div className="space-y-1">
+                                    {tradeTargetCells.map(cell => (
+                                      <div key={cell.id} className="flex items-center space-x-2 p-1 rounded hover:bg-muted/50">
+                                        <Checkbox 
+                                          id={`request-${cell.id}`} 
+                                          checked={request.cells.includes(cell.id)}
+                                          onCheckedChange={() => toggleRequestCell(cell.id)}
+                                        />
+                                        <label htmlFor={`request-${cell.id}`} className="flex-1 cursor-pointer text-xs">
+                                          <span className="font-mono">{cell.id.slice(0, 6)}...</span>
+                                          <span className="ml-1">{cell.cell_type === 'urban' ? '🏙️' : '🌾'}</span>
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </ScrollArea>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => { setTradeDialogOpen(false); resetTradeForm(); }}>Cancelar</Button>
+                        <Button onClick={handleProposeTrade} disabled={proposing || !tradeTargetTerritory}>
+                          {proposing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          Enviar Proposta
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader><TableRow><TableHead>De</TableHead><TableHead>Para</TableHead><TableHead>Oferta</TableHead><TableHead>Pedido</TableHead><TableHead></TableHead></TableRow></TableHeader>
@@ -304,12 +552,14 @@ export default function DiplomacyPage() {
                     {tradeDeals.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Nenhuma proposta pendente</TableCell></TableRow> :
                       tradeDeals.map((deal) => {
                         const isRecipient = deal.to_user_id === user?.id;
+                        const offerSummary = formatDealSummary(deal.offer as any);
+                        const requestSummary = formatDealSummary(deal.request as any);
                         return (
                           <TableRow key={deal.id}>
                             <TableCell>{deal.from_territory?.name}</TableCell>
                             <TableCell>{deal.to_territory?.name}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{JSON.stringify(deal.offer).slice(0, 30)}...</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{JSON.stringify(deal.request).slice(0, 30)}...</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{offerSummary}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{requestSummary}</TableCell>
                             <TableCell className="space-x-2">
                               {isRecipient && <>
                                 <Button size="sm" onClick={() => handleAcceptDeal(deal.id)}>Aceitar</Button>
