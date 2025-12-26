@@ -362,6 +362,54 @@ export type Database = {
           },
         ]
       }
+      diplomatic_history: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          involved_territories: string[] | null
+          proposal_id: string | null
+          space_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          involved_territories?: string[] | null
+          proposal_id?: string | null
+          space_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          involved_territories?: string[] | null
+          proposal_id?: string | null
+          space_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diplomatic_history_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "formal_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diplomatic_history_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_spaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diplomatic_relations: {
         Row: {
           created_at: string
@@ -406,6 +454,164 @@ export type Database = {
             columns: ["territory_b_id"]
             isOneToOne: false
             referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussion_replies: {
+        Row: {
+          author_id: string
+          author_territory_id: string | null
+          content: string
+          created_at: string
+          hidden_by: string | null
+          hidden_reason: string | null
+          id: string
+          is_hidden: boolean | null
+          topic_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          author_territory_id?: string | null
+          content: string
+          created_at?: string
+          hidden_by?: string | null
+          hidden_reason?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          topic_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          author_territory_id?: string | null
+          content?: string
+          created_at?: string
+          hidden_by?: string | null
+          hidden_reason?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          topic_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_replies_author_territory_id_fkey"
+            columns: ["author_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussion_replies_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussion_spaces: {
+        Row: {
+          bloc_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_private: boolean | null
+          name: string
+          space_type: Database["public"]["Enums"]["discussion_space_type"]
+          updated_at: string
+        }
+        Insert: {
+          bloc_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          name: string
+          space_type: Database["public"]["Enums"]["discussion_space_type"]
+          updated_at?: string
+        }
+        Update: {
+          bloc_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          name?: string
+          space_type?: Database["public"]["Enums"]["discussion_space_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_spaces_bloc_id_fkey"
+            columns: ["bloc_id"]
+            isOneToOne: false
+            referencedRelation: "geopolitical_blocs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussion_topics: {
+        Row: {
+          author_id: string
+          author_territory_id: string | null
+          content: string
+          created_at: string
+          id: string
+          is_locked: boolean | null
+          is_pinned: boolean | null
+          reply_count: number | null
+          space_id: string
+          title: string
+          updated_at: string
+          view_count: number | null
+        }
+        Insert: {
+          author_id: string
+          author_territory_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          reply_count?: number | null
+          space_id: string
+          title: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Update: {
+          author_id?: string
+          author_territory_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          reply_count?: number | null
+          space_id?: string
+          title?: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_topics_author_territory_id_fkey"
+            columns: ["author_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussion_topics_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_spaces"
             referencedColumns: ["id"]
           },
         ]
@@ -504,6 +710,91 @@ export type Database = {
             columns: ["era_id"]
             isOneToOne: false
             referencedRelation: "planetary_eras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formal_proposals: {
+        Row: {
+          created_at: string
+          description: string | null
+          full_content: string | null
+          id: string
+          proposal_type: Database["public"]["Enums"]["proposal_type"]
+          proposer_id: string
+          proposer_territory_id: string | null
+          result_entity_id: string | null
+          result_entity_type: string | null
+          space_id: string
+          status: Database["public"]["Enums"]["proposal_status"]
+          title: string
+          topic_id: string | null
+          updated_at: string
+          votes_abstain: number | null
+          votes_no: number | null
+          votes_yes: number | null
+          voting_ends_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          full_content?: string | null
+          id?: string
+          proposal_type: Database["public"]["Enums"]["proposal_type"]
+          proposer_id: string
+          proposer_territory_id?: string | null
+          result_entity_id?: string | null
+          result_entity_type?: string | null
+          space_id: string
+          status?: Database["public"]["Enums"]["proposal_status"]
+          title: string
+          topic_id?: string | null
+          updated_at?: string
+          votes_abstain?: number | null
+          votes_no?: number | null
+          votes_yes?: number | null
+          voting_ends_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          full_content?: string | null
+          id?: string
+          proposal_type?: Database["public"]["Enums"]["proposal_type"]
+          proposer_id?: string
+          proposer_territory_id?: string | null
+          result_entity_id?: string | null
+          result_entity_type?: string | null
+          space_id?: string
+          status?: Database["public"]["Enums"]["proposal_status"]
+          title?: string
+          topic_id?: string | null
+          updated_at?: string
+          votes_abstain?: number | null
+          votes_no?: number | null
+          votes_yes?: number | null
+          voting_ends_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formal_proposals_proposer_territory_id_fkey"
+            columns: ["proposer_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formal_proposals_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_spaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formal_proposals_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_topics"
             referencedColumns: ["id"]
           },
         ]
@@ -1428,6 +1719,48 @@ export type Database = {
             columns: ["territory_id"]
             isOneToOne: false
             referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_invitations: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string
+          invited_territory_id: string
+          room_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by: string
+          invited_territory_id: string
+          room_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string
+          invited_territory_id?: string
+          room_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_invitations_invited_territory_id_fkey"
+            columns: ["invited_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_invitations_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_spaces"
             referencedColumns: ["id"]
           },
         ]
@@ -2420,6 +2753,11 @@ export type Database = {
         | "war"
         | "alliance"
         | "trade_partner"
+      discussion_space_type:
+        | "planetary_council"
+        | "bloc_council"
+        | "trade_chamber"
+        | "private_room"
       event_type: "global" | "regional" | "crisis" | "conference" | "war"
       government_type:
         | "monarchy"
@@ -2446,6 +2784,21 @@ export type Database = {
         | "token_city"
         | "token_land"
         | "token_state"
+      proposal_status:
+        | "draft"
+        | "open"
+        | "voting"
+        | "approved"
+        | "rejected"
+        | "executed"
+      proposal_type:
+        | "law"
+        | "treaty"
+        | "bloc_creation"
+        | "trade_deal"
+        | "sanction"
+        | "era_change"
+        | "other"
       region_difficulty: "easy" | "medium" | "hard" | "extreme" | "anomaly"
       research_project_status: "active" | "completed" | "cancelled"
       resource_type: "food" | "energy" | "minerals" | "technology" | "influence"
@@ -2626,6 +2979,12 @@ export const Constants = {
         "alliance",
         "trade_partner",
       ],
+      discussion_space_type: [
+        "planetary_council",
+        "bloc_council",
+        "trade_chamber",
+        "private_room",
+      ],
       event_type: ["global", "regional", "crisis", "conference", "war"],
       government_type: [
         "monarchy",
@@ -2654,6 +3013,23 @@ export const Constants = {
         "token_city",
         "token_land",
         "token_state",
+      ],
+      proposal_status: [
+        "draft",
+        "open",
+        "voting",
+        "approved",
+        "rejected",
+        "executed",
+      ],
+      proposal_type: [
+        "law",
+        "treaty",
+        "bloc_creation",
+        "trade_deal",
+        "sanction",
+        "era_change",
+        "other",
       ],
       region_difficulty: ["easy", "medium", "hard", "extreme", "anomaly"],
       research_project_status: ["active", "completed", "cancelled"],
