@@ -296,6 +296,54 @@ export type Database = {
           },
         ]
       }
+      event_logs: {
+        Row: {
+          created_at: string
+          description: string | null
+          effects: Json | null
+          event_type: string
+          id: string
+          territory_id: string | null
+          tick_log_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          effects?: Json | null
+          event_type: string
+          id?: string
+          territory_id?: string | null
+          tick_log_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          effects?: Json | null
+          event_type?: string
+          id?: string
+          territory_id?: string | null
+          tick_log_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_logs_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_logs_tick_log_id_fkey"
+            columns: ["tick_log_id"]
+            isOneToOne: false
+            referencedRelation: "tick_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exploration_projects: {
         Row: {
           cells_completed: number
@@ -1193,6 +1241,48 @@ export type Database = {
           },
         ]
       }
+      tick_logs: {
+        Row: {
+          cities_processed: number | null
+          completed_at: string | null
+          error_message: string | null
+          events_generated: number | null
+          id: string
+          research_projects_completed: number | null
+          started_at: string
+          status: string
+          summary: Json | null
+          territories_processed: number | null
+          tick_number: number
+        }
+        Insert: {
+          cities_processed?: number | null
+          completed_at?: string | null
+          error_message?: string | null
+          events_generated?: number | null
+          id?: string
+          research_projects_completed?: number | null
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          territories_processed?: number | null
+          tick_number: number
+        }
+        Update: {
+          cities_processed?: number | null
+          completed_at?: string | null
+          error_message?: string | null
+          events_generated?: number | null
+          id?: string
+          research_projects_completed?: number | null
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          territories_processed?: number | null
+          tick_number?: number
+        }
+        Relationships: []
+      }
       token_market: {
         Row: {
           available_quantity: number
@@ -1630,10 +1720,12 @@ export type Database = {
           created_at: string
           id: string
           initial_playable_land_km2: number
+          last_tick_at: string | null
           max_urban_ratio: number
           season_day: number
           tick_interval_hours: number
           total_planet_land_km2: number
+          total_ticks: number | null
           updated_at: string
         }
         Insert: {
@@ -1641,10 +1733,12 @@ export type Database = {
           created_at?: string
           id?: string
           initial_playable_land_km2?: number
+          last_tick_at?: string | null
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
           total_planet_land_km2?: number
+          total_ticks?: number | null
           updated_at?: string
         }
         Update: {
@@ -1652,10 +1746,12 @@ export type Database = {
           created_at?: string
           id?: string
           initial_playable_land_km2?: number
+          last_tick_at?: string | null
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
           total_planet_land_km2?: number
+          total_ticks?: number | null
           updated_at?: string
         }
         Relationships: []
