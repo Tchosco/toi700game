@@ -48,6 +48,9 @@ import AdminTradeDeals from "./pages/admin/AdminTradeDeals";
 import AdminDiplomacy from "./pages/admin/AdminDiplomacy";
 import AdminTickEngine from "./pages/admin/AdminTickEngine";
 import NotFound from "./pages/NotFound";
+import AchievementsPage from "./pages/AchievementsPage";
+import MissionsPage from "./pages/MissionsPage";
+import TechTreePage from "./pages/TechTreePage";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +85,9 @@ const App = () => (
             <Route path="/camara-comercio" element={<TradeChamberPage />} />
             <Route path="/salas-diplomaticas" element={<PrivateRoomsPage />} />
             <Route path="/historico-diplomatico" element={<DiplomaticHistoryPage />} />
+            <Route path="/conquistas" element={<AchievementsPage />} />
+            <Route path="/missoes" element={<MissionsPage />} />
+            <Route path="/tecnologia" element={<TechTreePage />} />
             <Route path="/perfil" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/territories" element={<AdminTerritories />} />

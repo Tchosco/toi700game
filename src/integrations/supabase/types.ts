@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_secret: boolean | null
+          name: string
+          points: number
+          requirements: Json
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_secret?: boolean | null
+          name: string
+          points?: number
+          requirements?: Json
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_secret?: boolean | null
+          name?: string
+          points?: number
+          requirements?: Json
+        }
+        Relationships: []
+      }
       bloc_memberships: {
         Row: {
           bloc_id: string
@@ -1128,6 +1164,84 @@ export type Database = {
           },
         ]
       }
+      missions: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_hours: number | null
+          id: string
+          is_active: boolean | null
+          min_territory_level:
+            | Database["public"]["Enums"]["territory_level"]
+            | null
+          mission_type: Database["public"]["Enums"]["mission_type"]
+          name: string
+          objectives: Json
+          rewards: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          is_active?: boolean | null
+          min_territory_level?:
+            | Database["public"]["Enums"]["territory_level"]
+            | null
+          mission_type?: Database["public"]["Enums"]["mission_type"]
+          name: string
+          objectives?: Json
+          rewards?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          is_active?: boolean | null
+          min_territory_level?:
+            | Database["public"]["Enums"]["territory_level"]
+            | null
+          mission_type?: Database["public"]["Enums"]["mission_type"]
+          name?: string
+          objectives?: Json
+          rewards?: Json
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       parliamentary_votes: {
         Row: {
           bloc_id: string | null
@@ -1780,6 +1894,45 @@ export type Database = {
           },
         ]
       }
+      technologies: {
+        Row: {
+          category: Database["public"]["Enums"]["tech_category"]
+          created_at: string
+          description: string | null
+          effects: Json
+          icon: string | null
+          id: string
+          name: string
+          prerequisites: string[] | null
+          research_cost: number
+          tier: number
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["tech_category"]
+          created_at?: string
+          description?: string | null
+          effects?: Json
+          icon?: string | null
+          id?: string
+          name: string
+          prerequisites?: string[] | null
+          research_cost?: number
+          tier?: number
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["tech_category"]
+          created_at?: string
+          description?: string | null
+          effects?: Json
+          icon?: string | null
+          id?: string
+          name?: string
+          prerequisites?: string[] | null
+          research_cost?: number
+          tier?: number
+        }
+        Relationships: []
+      }
       territories: {
         Row: {
           accepted_statute: boolean
@@ -1936,6 +2089,54 @@ export type Database = {
           },
         ]
       }
+      territory_missions: {
+        Row: {
+          completed_at: string | null
+          expires_at: string | null
+          id: string
+          mission_id: string
+          progress: Json
+          started_at: string
+          status: Database["public"]["Enums"]["mission_status"]
+          territory_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          mission_id: string
+          progress?: Json
+          started_at?: string
+          status?: Database["public"]["Enums"]["mission_status"]
+          territory_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          mission_id?: string
+          progress?: Json
+          started_at?: string
+          status?: Database["public"]["Enums"]["mission_status"]
+          territory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_missions_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_missions_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       territory_research: {
         Row: {
           created_at: string
@@ -1969,6 +2170,48 @@ export type Database = {
             foreignKeyName: "territory_research_territory_id_fkey"
             columns: ["territory_id"]
             isOneToOne: true
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territory_research_queue: {
+        Row: {
+          id: string
+          progress: number
+          queue_position: number
+          started_at: string
+          technology_id: string
+          territory_id: string
+        }
+        Insert: {
+          id?: string
+          progress?: number
+          queue_position?: number
+          started_at?: string
+          technology_id: string
+          territory_id: string
+        }
+        Update: {
+          id?: string
+          progress?: number
+          queue_position?: number
+          started_at?: string
+          technology_id?: string
+          territory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_research_queue_technology_id_fkey"
+            columns: ["technology_id"]
+            isOneToOne: false
+            referencedRelation: "technologies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_research_queue_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
             referencedRelation: "territories"
             referencedColumns: ["id"]
           },
@@ -2008,6 +2251,42 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "territory_resources_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territory_technologies: {
+        Row: {
+          id: string
+          researched_at: string
+          technology_id: string
+          territory_id: string
+        }
+        Insert: {
+          id?: string
+          researched_at?: string
+          technology_id: string
+          territory_id: string
+        }
+        Update: {
+          id?: string
+          researched_at?: string
+          technology_id?: string
+          territory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_technologies_technology_id_fkey"
+            columns: ["technology_id"]
+            isOneToOne: false
+            referencedRelation: "technologies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territory_technologies_territory_id_fkey"
             columns: ["territory_id"]
             isOneToOne: false
             referencedRelation: "territories"
@@ -2409,6 +2688,35 @@ export type Database = {
             columns: ["territory_b_id"]
             isOneToOne: false
             referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
             referencedColumns: ["id"]
           },
         ]
@@ -2891,6 +3199,16 @@ export type Database = {
         | "token_city"
         | "token_land"
         | "token_state"
+      mission_status: "available" | "in_progress" | "completed" | "expired"
+      mission_type: "daily" | "weekly" | "story" | "special"
+      notification_type:
+        | "achievement"
+        | "mission"
+        | "war"
+        | "diplomacy"
+        | "market"
+        | "event"
+        | "system"
       proposal_status:
         | "draft"
         | "open"
@@ -2909,6 +3227,12 @@ export type Database = {
       region_difficulty: "easy" | "medium" | "hard" | "extreme" | "anomaly"
       research_project_status: "active" | "completed" | "cancelled"
       resource_type: "food" | "energy" | "minerals" | "technology" | "influence"
+      tech_category:
+        | "military"
+        | "economy"
+        | "science"
+        | "culture"
+        | "infrastructure"
       territory_level:
         | "colony"
         | "autonomous"
@@ -3121,6 +3445,17 @@ export const Constants = {
         "token_land",
         "token_state",
       ],
+      mission_status: ["available", "in_progress", "completed", "expired"],
+      mission_type: ["daily", "weekly", "story", "special"],
+      notification_type: [
+        "achievement",
+        "mission",
+        "war",
+        "diplomacy",
+        "market",
+        "event",
+        "system",
+      ],
       proposal_status: [
         "draft",
         "open",
@@ -3141,6 +3476,13 @@ export const Constants = {
       region_difficulty: ["easy", "medium", "hard", "extreme", "anomaly"],
       research_project_status: ["active", "completed", "cancelled"],
       resource_type: ["food", "energy", "minerals", "technology", "influence"],
+      tech_category: [
+        "military",
+        "economy",
+        "science",
+        "culture",
+        "infrastructure",
+      ],
       territory_level: [
         "colony",
         "autonomous",
