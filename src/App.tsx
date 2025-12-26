@@ -13,6 +13,7 @@ import TerritoryDetailPage from "./pages/TerritoryDetailPage";
 import MarketPage from "./pages/MarketPage";
 import ProfilePage from "./pages/ProfilePage";
 import CellMapPage from "./pages/CellMapPage";
+import DiplomacyPage from "./pages/DiplomacyPage";
 import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTerritories from "./pages/admin/AdminTerritories";
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/territorio/:id" element={<TerritoryDetailPage />} />
             <Route path="/mercado" element={<MarketPage />} />
             <Route path="/celulas" element={<CellMapPage />} />
+            <Route path="/diplomacia" element={<DiplomacyPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/territories" element={<AdminTerritories />} />
