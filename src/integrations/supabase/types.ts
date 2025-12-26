@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      bloc_memberships: {
+        Row: {
+          bloc_id: string
+          created_at: string
+          id: string
+          joined_at: string | null
+          left_at: string | null
+          status: string
+          territory_id: string
+        }
+        Insert: {
+          bloc_id: string
+          created_at?: string
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          status?: string
+          territory_id: string
+        }
+        Update: {
+          bloc_id?: string
+          created_at?: string
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          status?: string
+          territory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bloc_memberships_bloc_id_fkey"
+            columns: ["bloc_id"]
+            isOneToOne: false
+            referencedRelation: "geopolitical_blocs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bloc_memberships_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cells: {
         Row: {
           area_km2: number
@@ -412,6 +457,270 @@ export type Database = {
           },
         ]
       }
+      geopolitical_blocs: {
+        Row: {
+          charter: string | null
+          created_at: string
+          description: string | null
+          founded_at: string | null
+          founder_territory_id: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          charter?: string | null
+          created_at?: string
+          description?: string | null
+          founded_at?: string | null
+          founder_territory_id?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          charter?: string | null
+          created_at?: string
+          description?: string | null
+          founded_at?: string | null
+          founder_territory_id?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geopolitical_blocs_founder_territory_id_fkey"
+            columns: ["founder_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      law_templates: {
+        Row: {
+          base_repulsion: number
+          base_sympathy: number
+          category: string
+          created_at: string
+          description: string | null
+          economic_impact: number
+          full_text: string | null
+          id: string
+          is_constitution: boolean
+          legal_level: Database["public"]["Enums"]["legal_level"]
+          military_impact: number
+          name: string
+          negative_effects: Json
+          positive_effects: Json
+          prerequisites: Json
+          social_impact: number
+          territorial_impact: number
+        }
+        Insert: {
+          base_repulsion?: number
+          base_sympathy?: number
+          category: string
+          created_at?: string
+          description?: string | null
+          economic_impact?: number
+          full_text?: string | null
+          id?: string
+          is_constitution?: boolean
+          legal_level: Database["public"]["Enums"]["legal_level"]
+          military_impact?: number
+          name: string
+          negative_effects?: Json
+          positive_effects?: Json
+          prerequisites?: Json
+          social_impact?: number
+          territorial_impact?: number
+        }
+        Update: {
+          base_repulsion?: number
+          base_sympathy?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          economic_impact?: number
+          full_text?: string | null
+          id?: string
+          is_constitution?: boolean
+          legal_level?: Database["public"]["Enums"]["legal_level"]
+          military_impact?: number
+          name?: string
+          negative_effects?: Json
+          positive_effects?: Json
+          prerequisites?: Json
+          social_impact?: number
+          territorial_impact?: number
+        }
+        Relationships: []
+      }
+      laws: {
+        Row: {
+          bloc_id: string | null
+          category: string
+          created_at: string
+          description: string | null
+          economic_impact: number
+          enacted_at: string | null
+          full_text: string | null
+          id: string
+          is_constitution: boolean
+          legal_conflicts: Json
+          legal_level: Database["public"]["Enums"]["legal_level"]
+          military_impact: number
+          name: string
+          negative_effects: Json
+          population_repulsion: number
+          population_sympathy: number
+          positive_effects: Json
+          prerequisites: Json
+          proposed_by: string | null
+          repealed_at: string | null
+          social_impact: number
+          status: Database["public"]["Enums"]["law_status"]
+          territorial_impact: number
+          territory_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bloc_id?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          economic_impact?: number
+          enacted_at?: string | null
+          full_text?: string | null
+          id?: string
+          is_constitution?: boolean
+          legal_conflicts?: Json
+          legal_level: Database["public"]["Enums"]["legal_level"]
+          military_impact?: number
+          name: string
+          negative_effects?: Json
+          population_repulsion?: number
+          population_sympathy?: number
+          positive_effects?: Json
+          prerequisites?: Json
+          proposed_by?: string | null
+          repealed_at?: string | null
+          social_impact?: number
+          status?: Database["public"]["Enums"]["law_status"]
+          territorial_impact?: number
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bloc_id?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          economic_impact?: number
+          enacted_at?: string | null
+          full_text?: string | null
+          id?: string
+          is_constitution?: boolean
+          legal_conflicts?: Json
+          legal_level?: Database["public"]["Enums"]["legal_level"]
+          military_impact?: number
+          name?: string
+          negative_effects?: Json
+          population_repulsion?: number
+          population_sympathy?: number
+          positive_effects?: Json
+          prerequisites?: Json
+          proposed_by?: string | null
+          repealed_at?: string | null
+          social_impact?: number
+          status?: Database["public"]["Enums"]["law_status"]
+          territorial_impact?: number
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laws_bloc_id_fkey"
+            columns: ["bloc_id"]
+            isOneToOne: false
+            referencedRelation: "geopolitical_blocs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laws_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_history: {
+        Row: {
+          action: string
+          bloc_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          law_id: string | null
+          new_status: Database["public"]["Enums"]["law_status"] | null
+          old_status: Database["public"]["Enums"]["law_status"] | null
+          performed_by: string | null
+          territory_id: string | null
+        }
+        Insert: {
+          action: string
+          bloc_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          law_id?: string | null
+          new_status?: Database["public"]["Enums"]["law_status"] | null
+          old_status?: Database["public"]["Enums"]["law_status"] | null
+          performed_by?: string | null
+          territory_id?: string | null
+        }
+        Update: {
+          action?: string
+          bloc_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          law_id?: string | null
+          new_status?: Database["public"]["Enums"]["law_status"] | null
+          old_status?: Database["public"]["Enums"]["law_status"] | null
+          performed_by?: string | null
+          territory_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_history_bloc_id_fkey"
+            columns: ["bloc_id"]
+            isOneToOne: false
+            referencedRelation: "geopolitical_blocs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_history_law_id_fkey"
+            columns: ["law_id"]
+            isOneToOne: false
+            referencedRelation: "laws"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_history_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_listings: {
         Row: {
           created_at: string
@@ -458,6 +767,74 @@ export type Database = {
             columns: ["seller_territory_id"]
             isOneToOne: false
             referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parliamentary_votes: {
+        Row: {
+          bloc_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          legal_level: Database["public"]["Enums"]["legal_level"]
+          result: string | null
+          status: string
+          subject_id: string
+          title: string
+          total_eligible: number
+          updated_at: string
+          vote_type: Database["public"]["Enums"]["vote_type"]
+          votes_abstain: number
+          votes_no: number
+          votes_yes: number
+          voting_ends_at: string
+          voting_starts_at: string
+        }
+        Insert: {
+          bloc_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          legal_level: Database["public"]["Enums"]["legal_level"]
+          result?: string | null
+          status?: string
+          subject_id: string
+          title: string
+          total_eligible?: number
+          updated_at?: string
+          vote_type: Database["public"]["Enums"]["vote_type"]
+          votes_abstain?: number
+          votes_no?: number
+          votes_yes?: number
+          voting_ends_at: string
+          voting_starts_at?: string
+        }
+        Update: {
+          bloc_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          legal_level?: Database["public"]["Enums"]["legal_level"]
+          result?: string | null
+          status?: string
+          subject_id?: string
+          title?: string
+          total_eligible?: number
+          updated_at?: string
+          vote_type?: Database["public"]["Enums"]["vote_type"]
+          votes_abstain?: number
+          votes_no?: number
+          votes_yes?: number
+          voting_ends_at?: string
+          voting_starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parliamentary_votes_bloc_id_fkey"
+            columns: ["bloc_id"]
+            isOneToOne: false
+            referencedRelation: "geopolitical_blocs"
             referencedColumns: ["id"]
           },
         ]
@@ -1670,6 +2047,51 @@ export type Database = {
         }
         Relationships: []
       }
+      vote_records: {
+        Row: {
+          choice: Database["public"]["Enums"]["vote_choice"]
+          id: string
+          reason: string | null
+          territory_id: string
+          vote_id: string
+          voted_at: string
+          voter_id: string
+        }
+        Insert: {
+          choice: Database["public"]["Enums"]["vote_choice"]
+          id?: string
+          reason?: string | null
+          territory_id: string
+          vote_id: string
+          voted_at?: string
+          voter_id: string
+        }
+        Update: {
+          choice?: Database["public"]["Enums"]["vote_choice"]
+          id?: string
+          reason?: string | null
+          territory_id?: string
+          vote_id?: string
+          voted_at?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vote_records_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vote_records_vote_id_fkey"
+            columns: ["vote_id"]
+            isOneToOne: false
+            referencedRelation: "parliamentary_votes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       war_battles: {
         Row: {
           attacker_damage: number
@@ -1940,6 +2362,14 @@ export type Database = {
         | "oligarchy"
         | "democracy"
         | "dictatorship"
+      law_status:
+        | "draft"
+        | "proposed"
+        | "voting"
+        | "enacted"
+        | "repealed"
+        | "vetoed"
+      legal_level: "planetary" | "bloc" | "national"
       listing_status: "open" | "partially_filled" | "filled" | "cancelled"
       listing_type: "sell" | "buy"
       market_resource_type:
@@ -1980,6 +2410,15 @@ export type Database = {
         | "non_aggression"
         | "research"
         | "territorial"
+      vote_choice: "yes" | "no" | "abstain"
+      vote_type:
+        | "constitution"
+        | "law"
+        | "bloc_creation"
+        | "sanction"
+        | "era_change"
+        | "bloc_charter"
+        | "bloc_law"
       war_game_status: "declared" | "ongoing" | "resolved"
       war_status: "declared" | "active" | "ceasefire" | "ended"
     }
@@ -2130,6 +2569,15 @@ export const Constants = {
         "democracy",
         "dictatorship",
       ],
+      law_status: [
+        "draft",
+        "proposed",
+        "voting",
+        "enacted",
+        "repealed",
+        "vetoed",
+      ],
+      legal_level: ["planetary", "bloc", "national"],
       listing_status: ["open", "partially_filled", "filled", "cancelled"],
       listing_type: ["sell", "buy"],
       market_resource_type: [
@@ -2174,6 +2622,16 @@ export const Constants = {
         "non_aggression",
         "research",
         "territorial",
+      ],
+      vote_choice: ["yes", "no", "abstain"],
+      vote_type: [
+        "constitution",
+        "law",
+        "bloc_creation",
+        "sanction",
+        "era_change",
+        "bloc_charter",
+        "bloc_law",
       ],
       war_game_status: ["declared", "ongoing", "resolved"],
       war_status: ["declared", "active", "ceasefire", "ended"],
