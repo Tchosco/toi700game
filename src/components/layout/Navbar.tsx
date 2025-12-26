@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X, Shield, LogIn, LogOut, TrendingUp, User, Grid3X3, Swords, Users, Scale, Gavel, Globe2, Crown, History } from 'lucide-react';
+import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X, Shield, LogIn, LogOut, TrendingUp, User, Grid3X3, Swords, Users, Scale, Gavel, Globe2, Crown, History, MessageCircle, Handshake, Lock, Scroll, Palette } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,8 +17,6 @@ const navLinks = [
   { to: '/celulas', label: 'Células', icon: Grid3X3 },
   { to: '/populacao', label: 'População', icon: Users },
   { to: '/mercado', label: 'Mercado', icon: TrendingUp },
-  { to: '/diplomacia', label: 'Diplomacia', icon: Swords },
-  { to: '/territorios', label: 'Territórios', icon: Building2 },
 ];
 
 const legalLinks = [
@@ -27,6 +25,18 @@ const legalLinks = [
   { to: '/blocos', label: 'Blocos', icon: Globe2 },
   { to: '/leis', label: 'Minhas Leis', icon: Crown },
   { to: '/historico-legal', label: 'Histórico', icon: History },
+];
+
+const diplomacyLinks = [
+  { to: '/conselho-planetario', label: 'Conselho Planetário', icon: Globe2 },
+  { to: '/camara-comercio', label: 'Câmara de Comércio', icon: Handshake },
+  { to: '/salas-diplomaticas', label: 'Salas Privadas', icon: Lock },
+  { to: '/historico-diplomatico', label: 'Histórico Diplomático', icon: Scroll },
+];
+
+const stateLinks = [
+  { to: '/customizacao', label: 'Customização', icon: Palette },
+  { to: '/territorios', label: 'Territórios', icon: Building2 },
 ];
 
 export function Navbar() {
@@ -68,6 +78,73 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* State Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
+                    stateLinks.some(l => location.pathname === l.to)
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  Estado
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {stateLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <DropdownMenuItem key={link.to} asChild>
+                      <Link to={link.to} className="flex items-center gap-2 cursor-pointer">
+                        <Icon className="w-4 h-4" />
+                        {link.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Diplomacy Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
+                    diplomacyLinks.some(l => location.pathname === l.to) || location.pathname === '/diplomacia'
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Swords className="w-4 h-4" />
+                  Diplomacia
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link to="/diplomacia" className="flex items-center gap-2 cursor-pointer">
+                    <Swords className="w-4 h-4" />
+                    Relações Diplomáticas
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {diplomacyLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <DropdownMenuItem key={link.to} asChild>
+                      <Link to={link.to} className="flex items-center gap-2 cursor-pointer">
+                        <Icon className="w-4 h-4" />
+                        {link.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Legal Dropdown */}
             <DropdownMenu>
@@ -167,6 +244,66 @@ export function Navbar() {
                   </Link>
                 );
               })}
+
+              {/* State Links - Mobile */}
+              <div className="border-t border-border/50 mt-2 pt-2">
+                <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">Estado</p>
+                {stateLinks.map((link) => {
+                  const Icon = link.icon;
+                  const isActive = location.pathname === link.to;
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary/20 text-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Diplomacy Links - Mobile */}
+              <div className="border-t border-border/50 mt-2 pt-2">
+                <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">Diplomacia</p>
+                <Link
+                  to="/diplomacia"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/diplomacia'
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <Swords className="w-5 h-5" />
+                  Relações Diplomáticas
+                </Link>
+                {diplomacyLinks.map((link) => {
+                  const Icon = link.icon;
+                  const isActive = location.pathname === link.to;
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary/20 text-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
 
               {/* Legal Links - Mobile */}
               <div className="border-t border-border/50 mt-2 pt-2">
