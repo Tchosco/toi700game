@@ -18,6 +18,10 @@ import AdminEvents from "./pages/admin/AdminEvents";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminCities from "./pages/admin/AdminCities";
 import AdminRegions from "./pages/admin/AdminRegions";
+import AdminCells from "./pages/admin/AdminCells";
+import AdminEras from "./pages/admin/AdminEras";
+import AdminProjects from "./pages/admin/AdminProjects";
+import AdminConfig from "./pages/admin/AdminConfig";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +48,10 @@ const App = () => (
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/cities" element={<AdminCities />} />
             <Route path="/admin/regions" element={<AdminRegions />} />
+            <Route path="/admin/cells" element={<AdminCells />} />
+            <Route path="/admin/eras" element={<AdminEras />} />
+            <Route path="/admin/projects" element={<AdminProjects />} />
+            <Route path="/admin/config" element={<AdminConfig />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -12,7 +12,11 @@ import {
   Loader2,
   Shield,
   Building2,
-  Globe
+  Globe,
+  Grid3X3,
+  Clock,
+  Compass,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +29,10 @@ const navItems = [
   { href: '/admin/territories', label: 'Territórios', icon: MapPin },
   { href: '/admin/regions', label: 'Regiões', icon: Globe },
   { href: '/admin/cities', label: 'Cidades', icon: Building2 },
+  { href: '/admin/cells', label: 'Células', icon: Grid3X3 },
+  { href: '/admin/eras', label: 'Eras', icon: Clock },
+  { href: '/admin/projects', label: 'Projetos', icon: Compass },
+  { href: '/admin/config', label: 'Configurações', icon: Settings },
   { href: '/admin/tokens', label: 'Tokens', icon: Coins },
   { href: '/admin/events', label: 'Eventos', icon: CalendarDays },
   { href: '/admin/users', label: 'Usuários', icon: Users },

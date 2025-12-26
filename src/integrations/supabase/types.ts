@@ -14,8 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      cells: {
+        Row: {
+          area_km2: number
+          cell_type: Database["public"]["Enums"]["cell_type"]
+          city_id: string | null
+          colonized_at: string | null
+          colonized_by: string | null
+          created_at: string
+          explored_at: string | null
+          explored_by: string | null
+          id: string
+          owner_territory_id: string | null
+          region_id: string | null
+          status: Database["public"]["Enums"]["cell_status"]
+          unlock_reason: string | null
+          unlocked_by_era_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          area_km2?: number
+          cell_type?: Database["public"]["Enums"]["cell_type"]
+          city_id?: string | null
+          colonized_at?: string | null
+          colonized_by?: string | null
+          created_at?: string
+          explored_at?: string | null
+          explored_by?: string | null
+          id?: string
+          owner_territory_id?: string | null
+          region_id?: string | null
+          status?: Database["public"]["Enums"]["cell_status"]
+          unlock_reason?: string | null
+          unlocked_by_era_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          area_km2?: number
+          cell_type?: Database["public"]["Enums"]["cell_type"]
+          city_id?: string | null
+          colonized_at?: string | null
+          colonized_by?: string | null
+          created_at?: string
+          explored_at?: string | null
+          explored_by?: string | null
+          id?: string
+          owner_territory_id?: string | null
+          region_id?: string | null
+          status?: Database["public"]["Enums"]["cell_status"]
+          unlock_reason?: string | null
+          unlocked_by_era_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cells_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cells_owner_territory_id_fkey"
+            columns: ["owner_territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cells_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cells_unlocked_by_era_id_fkey"
+            columns: ["unlocked_by_era_id"]
+            isOneToOne: false
+            referencedRelation: "planetary_eras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cities: {
         Row: {
+          cell_id: string | null
           created_at: string
           id: string
           is_neutral: boolean
@@ -26,6 +110,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cell_id?: string | null
           created_at?: string
           id?: string
           is_neutral?: boolean
@@ -36,6 +121,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cell_id?: string | null
           created_at?: string
           id?: string
           is_neutral?: boolean
@@ -46,6 +132,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cities_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cities_region_id_fkey"
             columns: ["region_id"]
@@ -61,6 +154,122 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      exploration_projects: {
+        Row: {
+          cells_completed: number
+          created_at: string
+          description: string | null
+          era_id: string | null
+          id: string
+          name: string
+          project_type: string
+          started_by: string | null
+          status: string
+          target_cells: number
+          updated_at: string
+        }
+        Insert: {
+          cells_completed?: number
+          created_at?: string
+          description?: string | null
+          era_id?: string | null
+          id?: string
+          name: string
+          project_type: string
+          started_by?: string | null
+          status?: string
+          target_cells?: number
+          updated_at?: string
+        }
+        Update: {
+          cells_completed?: number
+          created_at?: string
+          description?: string | null
+          era_id?: string | null
+          id?: string
+          name?: string
+          project_type?: string
+          started_by?: string | null
+          status?: string
+          target_cells?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exploration_projects_era_id_fkey"
+            columns: ["era_id"]
+            isOneToOne: false
+            referencedRelation: "planetary_eras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planetary_config: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      planetary_eras: {
+        Row: {
+          cells_unlocked: number
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          started_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cells_unlocked?: number
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          order_index?: number
+          started_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cells_unlocked?: number
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_index?: number
+          started_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       planetary_events: {
         Row: {
@@ -147,6 +356,48 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      project_participants: {
+        Row: {
+          contribution_points: number
+          id: string
+          joined_at: string
+          project_id: string
+          territory_id: string | null
+          user_id: string
+        }
+        Insert: {
+          contribution_points?: number
+          id?: string
+          joined_at?: string
+          project_id: string
+          territory_id?: string | null
+          user_id: string
+        }
+        Update: {
+          contribution_points?: number
+          id?: string
+          joined_at?: string
+          project_id?: string
+          territory_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_participants_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "exploration_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_participants_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       regions: {
         Row: {
@@ -382,6 +633,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      cell_status: "blocked" | "explored" | "colonized"
+      cell_type: "rural" | "urban" | "neutral" | "blocked"
       city_status: "free" | "occupied" | "neutral"
       event_type: "global" | "regional" | "crisis" | "conference" | "war"
       government_type:
@@ -533,6 +786,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      cell_status: ["blocked", "explored", "colonized"],
+      cell_type: ["rural", "urban", "neutral", "blocked"],
       city_status: ["free", "occupied", "neutral"],
       event_type: ["global", "regional", "crisis", "conference", "war"],
       government_type: [
