@@ -29,6 +29,7 @@ interface AdminLayoutProps {
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/tick-engine', label: 'Motor de Turnos', icon: Clock },
   { href: '/admin/territories', label: 'Territórios', icon: MapPin },
   { href: '/admin/regions', label: 'Regiões', icon: Globe },
   { href: '/admin/cities', label: 'Cidades', icon: Building2 },

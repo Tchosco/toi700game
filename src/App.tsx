@@ -31,6 +31,7 @@ import AdminMarket from "./pages/admin/AdminMarket";
 import AdminMarketListings from "./pages/admin/AdminMarketListings";
 import AdminTradeDeals from "./pages/admin/AdminTradeDeals";
 import AdminDiplomacy from "./pages/admin/AdminDiplomacy";
+import AdminTickEngine from "./pages/admin/AdminTickEngine";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/admin/market-listings" element={<AdminMarketListings />} />
             <Route path="/admin/trade-deals" element={<AdminTradeDeals />} />
             <Route path="/admin/diplomacy" element={<AdminDiplomacy />} />
+            <Route path="/admin/tick-engine" element={<AdminTickEngine />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
