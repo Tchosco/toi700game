@@ -19,13 +19,17 @@ import AdminTokens from "./pages/admin/AdminTokens";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminCities from "./pages/admin/AdminCities";
+import AdminCityProfiles from "./pages/admin/AdminCityProfiles";
 import AdminRegions from "./pages/admin/AdminRegions";
 import AdminCells from "./pages/admin/AdminCells";
 import AdminEras from "./pages/admin/AdminEras";
 import AdminProjects from "./pages/admin/AdminProjects";
+import AdminResearchProjects from "./pages/admin/AdminResearchProjects";
 import AdminConfig from "./pages/admin/AdminConfig";
+import AdminWorldConfig from "./pages/admin/AdminWorldConfig";
 import AdminMarket from "./pages/admin/AdminMarket";
-import AdminResearch from "./pages/admin/AdminResearch";
+import AdminMarketListings from "./pages/admin/AdminMarketListings";
+import AdminTradeDeals from "./pages/admin/AdminTradeDeals";
 import AdminDiplomacy from "./pages/admin/AdminDiplomacy";
 import NotFound from "./pages/NotFound";
 
@@ -54,13 +58,17 @@ const App = () => (
             <Route path="/admin/events" element={<AdminEvents />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/cities" element={<AdminCities />} />
+            <Route path="/admin/city-profiles" element={<AdminCityProfiles />} />
             <Route path="/admin/regions" element={<AdminRegions />} />
             <Route path="/admin/cells" element={<AdminCells />} />
             <Route path="/admin/eras" element={<AdminEras />} />
             <Route path="/admin/projects" element={<AdminProjects />} />
+            <Route path="/admin/research-projects" element={<AdminResearchProjects />} />
             <Route path="/admin/config" element={<AdminConfig />} />
+            <Route path="/admin/world-config" element={<AdminWorldConfig />} />
             <Route path="/admin/market" element={<AdminMarket />} />
-            <Route path="/admin/research" element={<AdminResearch />} />
+            <Route path="/admin/market-listings" element={<AdminMarketListings />} />
+            <Route path="/admin/trade-deals" element={<AdminTradeDeals />} />
             <Route path="/admin/diplomacy" element={<AdminDiplomacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
