@@ -2740,6 +2740,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      match_market_order: {
+        Args: {
+          p_filled_quantity: number
+          p_listing_id: string
+          p_listing_type: string
+          p_price_per_unit: number
+          p_quantity: number
+          p_resource_type: string
+          p_seller_territory_id: string
+          p_seller_user_id: string
+        }
+        Returns: {
+          new_status: string
+          remaining_quantity: number
+          trades_executed: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
