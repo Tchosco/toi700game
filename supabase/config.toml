@@ -2,3 +2,9 @@ project_id = "gapzhhgkbojwamfrgnxk"
 
 [functions.process-tick]
 verify_jwt = false
+
+[functions.colonize-cell]
+verify_jwt = false
+
+[functions.found-city]
+verify_jwt = false
