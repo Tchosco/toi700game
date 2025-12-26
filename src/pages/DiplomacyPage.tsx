@@ -7,10 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Swords, Handshake, ShoppingBag, Flag, Shield, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Loader2, Swords, Handshake, ShoppingBag, Plus, AlertTriangle } from 'lucide-react';
 
 export default function DiplomacyPage() {
   const { user } = useAuth();
@@ -20,16 +24,35 @@ export default function DiplomacyPage() {
   const [tradeDeals, setTradeDeals] = useState<any[]>([]);
   const [cellsForSale, setCellsForSale] = useState<any[]>([]);
   const [myTerritory, setMyTerritory] = useState<any>(null);
+  const [otherTerritories, setOtherTerritories] = useState<any[]>([]);
+  
+  // War declaration form state
+  const [warDialogOpen, setWarDialogOpen] = useState(false);
+  const [selectedTargetTerritory, setSelectedTargetTerritory] = useState<string>('');
+  const [targetCells, setTargetCells] = useState<any[]>([]);
+  const [selectedCells, setSelectedCells] = useState<string[]>([]);
+  const [warTitle, setWarTitle] = useState('');
+  const [declaring, setDeclaring] = useState(false);
 
   useEffect(() => { fetchData(); }, [user]);
+
+  useEffect(() => {
+    if (selectedTargetTerritory) {
+      fetchTargetCells(selectedTargetTerritory);
+    } else {
+      setTargetCells([]);
+      setSelectedCells([]);
+    }
+  }, [selectedTargetTerritory]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      const [warsRes, dealsRes, salesRes] = await Promise.all([
+      const [warsRes, dealsRes, salesRes, territoriesRes] = await Promise.all([
         supabase.from('wars').select('*, attacker:territories!wars_attacker_id_fkey(name), defender:territories!wars_defender_id_fkey(name)').in('status', ['declared', 'active']).order('created_at', { ascending: false }),
         supabase.from('trade_deals').select('*, from_territory:territories!trade_deals_from_territory_id_fkey(name), to_territory:territories!trade_deals_to_territory_id_fkey(name)').eq('status', 'proposed').order('created_at', { ascending: false }),
         supabase.from('territory_transfers').select('*, cells(id, region_id), from_territory:territories!territory_transfers_from_territory_id_fkey(name)').eq('transfer_type', 'sale_pending'),
+        supabase.from('territories').select('id, name, owner_id, is_neutral').eq('status', 'active').eq('is_neutral', false),
       ]);
 
       if (warsRes.data) setWars(warsRes.data);
@@ -39,11 +62,74 @@ export default function DiplomacyPage() {
       if (user) {
         const { data: territory } = await supabase.from('territories').select('*').eq('owner_id', user.id).eq('status', 'active').limit(1).maybeSingle();
         setMyTerritory(territory);
+        
+        if (territoriesRes.data && territory) {
+          setOtherTerritories(territoriesRes.data.filter(t => t.id !== territory.id));
+        }
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchTargetCells(territoryId: string) {
+    const { data } = await supabase
+      .from('cells')
+      .select('id, cell_type, is_urban_eligible, region_id, regions(name)')
+      .eq('owner_territory_id', territoryId)
+      .eq('status', 'colonized');
+    setTargetCells(data || []);
+  }
+
+  function toggleCellSelection(cellId: string) {
+    setSelectedCells(prev => 
+      prev.includes(cellId) 
+        ? prev.filter(id => id !== cellId)
+        : [...prev, cellId]
+    );
+  }
+
+  function selectAllCells() {
+    if (selectedCells.length === targetCells.length) {
+      setSelectedCells([]);
+    } else {
+      setSelectedCells(targetCells.map(c => c.id));
+    }
+  }
+
+  async function handleDeclareWar() {
+    if (!selectedTargetTerritory || selectedCells.length === 0) {
+      toast({ title: 'Erro', description: 'Selecione um território e pelo menos uma célula.', variant: 'destructive' });
+      return;
+    }
+
+    setDeclaring(true);
+    try {
+      const res = await supabase.functions.invoke('declare-war', {
+        body: {
+          action: 'declare',
+          target_territory_id: selectedTargetTerritory,
+          target_cells: selectedCells,
+          title: warTitle || undefined,
+        }
+      });
+
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message);
+      }
+
+      toast({ title: 'Guerra Declarada!', description: res.data.message });
+      setWarDialogOpen(false);
+      setSelectedTargetTerritory('');
+      setSelectedCells([]);
+      setWarTitle('');
+      fetchData();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeclaring(false);
     }
   }
 
@@ -94,9 +180,95 @@ export default function DiplomacyPage() {
 
           <TabsContent value="wars">
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive" />Guerras Ativas</CardTitle>
-                <CardDescription>Conflitos são resolvidos por turnos. A cada tick, poder militar é calculado.</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive" />Guerras Ativas</CardTitle>
+                  <CardDescription>Conflitos são resolvidos por turnos. A cada tick, poder militar é calculado.</CardDescription>
+                </div>
+                {myTerritory && (
+                  <Dialog open={warDialogOpen} onOpenChange={setWarDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive"><Plus className="w-4 h-4 mr-2" />Declarar Guerra</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2"><Swords className="text-destructive" />Declarar Guerra</DialogTitle>
+                        <DialogDescription>Escolha um território alvo e as células que deseja conquistar. Declarar guerra custa 10 de estabilidade.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>Título da Guerra (opcional)</Label>
+                          <Input 
+                            value={warTitle} 
+                            onChange={(e) => setWarTitle(e.target.value)} 
+                            placeholder="Ex: Guerra pela Fronteira Norte"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Território Alvo</Label>
+                          <Select value={selectedTargetTerritory} onValueChange={setSelectedTargetTerritory}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um território" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {otherTerritories.map(t => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {selectedTargetTerritory && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label>Células Alvo ({selectedCells.length} selecionadas)</Label>
+                              <Button variant="ghost" size="sm" onClick={selectAllCells}>
+                                {selectedCells.length === targetCells.length ? 'Desmarcar' : 'Selecionar'} Todas
+                              </Button>
+                            </div>
+                            {targetCells.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">Este território não possui células colonizadas.</p>
+                            ) : (
+                              <ScrollArea className="h-48 rounded-md border p-2">
+                                <div className="space-y-2">
+                                  {targetCells.map(cell => (
+                                    <div key={cell.id} className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50">
+                                      <Checkbox 
+                                        id={cell.id} 
+                                        checked={selectedCells.includes(cell.id)}
+                                        onCheckedChange={() => toggleCellSelection(cell.id)}
+                                      />
+                                      <label htmlFor={cell.id} className="flex-1 cursor-pointer text-sm">
+                                        <span className="font-mono">{cell.id.slice(0, 8)}...</span>
+                                        <span className="ml-2 text-muted-foreground">
+                                          {cell.cell_type === 'urban' ? '🏙️' : '🌾'} 
+                                          {cell.is_urban_eligible && '⭐'}
+                                        </span>
+                                        {cell.regions?.name && (
+                                          <Badge variant="outline" className="ml-2 text-xs">{cell.regions.name}</Badge>
+                                        )}
+                                      </label>
+                                    </div>
+                                  ))}
+                                </div>
+                              </ScrollArea>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setWarDialogOpen(false)}>Cancelar</Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleDeclareWar} 
+                          disabled={declaring || selectedCells.length === 0}
+                        >
+                          {declaring && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          Declarar Guerra
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </CardHeader>
               <CardContent>
                 <Table>
