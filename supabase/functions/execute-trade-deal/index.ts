@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       });
 
     } else if (action === 'accept') {
-      // Accept and execute trade deal
+      // Accept and execute trade deal with atomic operations
       if (!deal_id) {
         return new Response(JSON.stringify({ error: 'Deal ID required' }), {
           status: 400,
@@ -139,116 +139,198 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: deal, error: dealError } = await supabase
+      // Lock deal status to prevent concurrent acceptance
+      // First update status to 'processing' only if still 'proposed'
+      const { data: lockedDeal, error: lockError } = await supabase
         .from('trade_deals')
-        .select('*')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
         .eq('id', deal_id)
+        .eq('status', 'proposed')
+        .select()
         .single();
 
-      if (dealError || !deal) {
-        return new Response(JSON.stringify({ error: 'Trade deal not found' }), {
-          status: 404,
+      if (lockError || !lockedDeal) {
+        return new Response(JSON.stringify({ error: 'Trade deal not available or already being processed' }), {
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      if (deal.to_user_id !== user.id) {
+      if (lockedDeal.to_user_id !== user.id) {
+        // Revert status
+        await supabase
+          .from('trade_deals')
+          .update({ status: 'proposed' })
+          .eq('id', deal_id);
+        
         return new Response(JSON.stringify({ error: 'Only the recipient can accept' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      if (deal.status !== 'proposed') {
-        return new Response(JSON.stringify({ error: 'Deal is no longer pending' }), {
+      const offerData = lockedDeal.offer as TradeSide;
+      const requestData = lockedDeal.request as TradeSide;
+
+      console.log('[execute-trade-deal] Executing atomic trade...');
+
+      try {
+        // Transfer currency using atomic function
+        if (offerData.currency && offerData.currency > 0) {
+          const { data: result, error } = await supabase.rpc('atomic_transfer_currency', {
+            p_from_user_id: lockedDeal.from_user_id,
+            p_to_user_id: lockedDeal.to_user_id,
+            p_amount: offerData.currency
+          });
+          
+          if (error || !result?.success) {
+            throw new Error(result?.error || error?.message || 'Currency transfer failed (offer)');
+          }
+        }
+        
+        if (requestData.currency && requestData.currency > 0) {
+          const { data: result, error } = await supabase.rpc('atomic_transfer_currency', {
+            p_from_user_id: lockedDeal.to_user_id,
+            p_to_user_id: lockedDeal.from_user_id,
+            p_amount: requestData.currency
+          });
+          
+          if (error || !result?.success) {
+            throw new Error(result?.error || error?.message || 'Currency transfer failed (request)');
+          }
+        }
+
+        // Transfer tokens using atomic function
+        if (offerData.tokens) {
+          const { data: result, error } = await supabase.rpc('atomic_transfer_tokens', {
+            p_from_user_id: lockedDeal.from_user_id,
+            p_to_user_id: lockedDeal.to_user_id,
+            p_city_tokens: offerData.tokens.city || 0,
+            p_land_tokens: offerData.tokens.land || 0,
+            p_state_tokens: offerData.tokens.state || 0
+          });
+          
+          if (error || !result?.success) {
+            throw new Error(result?.error || error?.message || 'Token transfer failed (offer)');
+          }
+        }
+        
+        if (requestData.tokens) {
+          const { data: result, error } = await supabase.rpc('atomic_transfer_tokens', {
+            p_from_user_id: lockedDeal.to_user_id,
+            p_to_user_id: lockedDeal.from_user_id,
+            p_city_tokens: requestData.tokens.city || 0,
+            p_land_tokens: requestData.tokens.land || 0,
+            p_state_tokens: requestData.tokens.state || 0
+          });
+          
+          if (error || !result?.success) {
+            throw new Error(result?.error || error?.message || 'Token transfer failed (request)');
+          }
+        }
+
+        // Transfer resources using atomic function
+        if (offerData.resources) {
+          const { data: result, error } = await supabase.rpc('atomic_transfer_resources', {
+            p_from_territory_id: lockedDeal.from_territory_id,
+            p_to_territory_id: lockedDeal.to_territory_id,
+            p_food: offerData.resources.food || 0,
+            p_energy: offerData.resources.energy || 0,
+            p_minerals: offerData.resources.minerals || 0,
+            p_tech: offerData.resources.tech || 0
+          });
+          
+          if (error || !result?.success) {
+            throw new Error(result?.error || error?.message || 'Resource transfer failed (offer)');
+          }
+        }
+        
+        if (requestData.resources) {
+          const { data: result, error } = await supabase.rpc('atomic_transfer_resources', {
+            p_from_territory_id: lockedDeal.to_territory_id,
+            p_to_territory_id: lockedDeal.from_territory_id,
+            p_food: requestData.resources.food || 0,
+            p_energy: requestData.resources.energy || 0,
+            p_minerals: requestData.resources.minerals || 0,
+            p_tech: requestData.resources.tech || 0
+          });
+          
+          if (error || !result?.success) {
+            throw new Error(result?.error || error?.message || 'Resource transfer failed (request)');
+          }
+        }
+
+        // Transfer cells (these are ownership changes, less prone to race conditions)
+        if (offerData.cells?.length) {
+          for (const cellId of offerData.cells) {
+            await supabase
+              .from('cells')
+              .update({ owner_territory_id: lockedDeal.to_territory_id })
+              .eq('id', cellId);
+
+            await supabase
+              .from('territory_transfers')
+              .insert({
+                cell_id: cellId,
+                from_territory_id: lockedDeal.from_territory_id,
+                to_territory_id: lockedDeal.to_territory_id,
+                transfer_type: 'trade',
+                notes: `Trade Deal: ${deal_id}`,
+              });
+          }
+        }
+        
+        if (requestData.cells?.length) {
+          for (const cellId of requestData.cells) {
+            await supabase
+              .from('cells')
+              .update({ owner_territory_id: lockedDeal.from_territory_id })
+              .eq('id', cellId);
+
+            await supabase
+              .from('territory_transfers')
+              .insert({
+                cell_id: cellId,
+                from_territory_id: lockedDeal.to_territory_id,
+                to_territory_id: lockedDeal.from_territory_id,
+                transfer_type: 'trade',
+                notes: `Trade Deal: ${deal_id}`,
+              });
+          }
+        }
+
+        // Mark deal as completed
+        await supabase
+          .from('trade_deals')
+          .update({ status: 'completed', updated_at: new Date().toISOString() })
+          .eq('id', deal_id);
+
+        console.log(`[execute-trade-deal] Trade deal ${deal_id} completed successfully`);
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Troca realizada com sucesso!' 
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      } catch (tradeError: any) {
+        // Revert to proposed status on failure
+        await supabase
+          .from('trade_deals')
+          .update({ status: 'proposed' })
+          .eq('id', deal_id);
+        
+        console.error('[execute-trade-deal] Trade execution failed:', tradeError);
+        
+        return new Response(JSON.stringify({ 
+          error: tradeError.message || 'Trade execution failed' 
+        }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
-      const offerData = deal.offer as TradeSide;
-      const requestData = deal.request as TradeSide;
-
-      // Execute atomic trade
-      console.log('[execute-trade-deal] Executing trade...');
-
-      // Transfer currency
-      if (offerData.currency) {
-        await transferCurrency(supabase, deal.from_user_id, deal.to_user_id, offerData.currency);
-      }
-      if (requestData.currency) {
-        await transferCurrency(supabase, deal.to_user_id, deal.from_user_id, requestData.currency);
-      }
-
-      // Transfer tokens
-      if (offerData.tokens) {
-        await transferTokens(supabase, deal.from_user_id, deal.to_user_id, offerData.tokens);
-      }
-      if (requestData.tokens) {
-        await transferTokens(supabase, deal.to_user_id, deal.from_user_id, requestData.tokens);
-      }
-
-      // Transfer resources
-      if (offerData.resources) {
-        await transferResources(supabase, deal.from_territory_id, deal.to_territory_id, offerData.resources);
-      }
-      if (requestData.resources) {
-        await transferResources(supabase, deal.to_territory_id, deal.from_territory_id, requestData.resources);
-      }
-
-      // Transfer cells
-      if (offerData.cells?.length) {
-        for (const cellId of offerData.cells) {
-          await supabase
-            .from('cells')
-            .update({ owner_territory_id: deal.to_territory_id })
-            .eq('id', cellId);
-
-          await supabase
-            .from('territory_transfers')
-            .insert({
-              cell_id: cellId,
-              from_territory_id: deal.from_territory_id,
-              to_territory_id: deal.to_territory_id,
-              transfer_type: 'trade',
-              notes: `Trade Deal: ${deal_id}`,
-            });
-        }
-      }
-      if (requestData.cells?.length) {
-        for (const cellId of requestData.cells) {
-          await supabase
-            .from('cells')
-            .update({ owner_territory_id: deal.from_territory_id })
-            .eq('id', cellId);
-
-          await supabase
-            .from('territory_transfers')
-            .insert({
-              cell_id: cellId,
-              from_territory_id: deal.to_territory_id,
-              to_territory_id: deal.from_territory_id,
-              transfer_type: 'trade',
-              notes: `Trade Deal: ${deal_id}`,
-            });
-        }
-      }
-
-      // Update deal status
-      await supabase
-        .from('trade_deals')
-        .update({ status: 'completed', updated_at: new Date().toISOString() })
-        .eq('id', deal_id);
-
-      console.log(`[execute-trade-deal] Trade deal ${deal_id} completed`);
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'Troca realizada com sucesso!' 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
 
     } else if (action === 'reject' || action === 'cancel') {
       if (!deal_id) {
@@ -305,65 +387,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-
-async function transferCurrency(supabase: any, fromUserId: string, toUserId: string, amount: number) {
-  const { data: fromWallet } = await supabase.from('player_wallets').select('balance').eq('user_id', fromUserId).single();
-  const { data: toWallet } = await supabase.from('player_wallets').select('balance').eq('user_id', toUserId).single();
-
-  if (fromWallet && toWallet) {
-    await supabase.from('player_wallets').update({ balance: Number(fromWallet.balance) - amount }).eq('user_id', fromUserId);
-    await supabase.from('player_wallets').update({ balance: Number(toWallet.balance) + amount }).eq('user_id', toUserId);
-  }
-}
-
-async function transferTokens(supabase: any, fromUserId: string, toUserId: string, tokens: { city?: number; land?: number; state?: number }) {
-  const { data: fromTokens } = await supabase.from('user_tokens').select('*').eq('user_id', fromUserId).single();
-  const { data: toTokens } = await supabase.from('user_tokens').select('*').eq('user_id', toUserId).single();
-
-  if (fromTokens && toTokens) {
-    if (tokens.city) {
-      await supabase.from('user_tokens').update({ city_tokens: fromTokens.city_tokens - tokens.city }).eq('user_id', fromUserId);
-      await supabase.from('user_tokens').update({ city_tokens: toTokens.city_tokens + tokens.city }).eq('user_id', toUserId);
-    }
-    if (tokens.land) {
-      await supabase.from('user_tokens').update({ land_tokens: fromTokens.land_tokens - tokens.land }).eq('user_id', fromUserId);
-      await supabase.from('user_tokens').update({ land_tokens: toTokens.land_tokens + tokens.land }).eq('user_id', toUserId);
-    }
-    if (tokens.state) {
-      await supabase.from('user_tokens').update({ state_tokens: fromTokens.state_tokens - tokens.state }).eq('user_id', fromUserId);
-      await supabase.from('user_tokens').update({ state_tokens: toTokens.state_tokens + tokens.state }).eq('user_id', toUserId);
-    }
-  }
-}
-
-async function transferResources(supabase: any, fromTerritoryId: string, toTerritoryId: string, resources: { food?: number; energy?: number; minerals?: number; tech?: number }) {
-  const { data: fromRes } = await supabase.from('resource_balances').select('*').eq('territory_id', fromTerritoryId).single();
-  const { data: toRes } = await supabase.from('resource_balances').select('*').eq('territory_id', toTerritoryId).single();
-
-  if (fromRes && toRes) {
-    const updates: any = {};
-    const toUpdates: any = {};
-
-    if (resources.food) {
-      updates.food = Math.max(0, fromRes.food - resources.food);
-      toUpdates.food = toRes.food + resources.food;
-    }
-    if (resources.energy) {
-      updates.energy = Math.max(0, fromRes.energy - resources.energy);
-      toUpdates.energy = toRes.energy + resources.energy;
-    }
-    if (resources.minerals) {
-      updates.minerals = Math.max(0, fromRes.minerals - resources.minerals);
-      toUpdates.minerals = toRes.minerals + resources.minerals;
-    }
-    if (resources.tech) {
-      updates.tech = Math.max(0, fromRes.tech - resources.tech);
-      toUpdates.tech = toRes.tech + resources.tech;
-    }
-
-    if (Object.keys(updates).length) {
-      await supabase.from('resource_balances').update(updates).eq('territory_id', fromTerritoryId);
-      await supabase.from('resource_balances').update(toUpdates).eq('territory_id', toTerritoryId);
-    }
-  }
-}

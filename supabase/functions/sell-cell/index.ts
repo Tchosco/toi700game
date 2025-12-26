@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, cell_id, price, territory_id, listing_id } = await req.json();
+    const { action, cell_id, price, territory_id } = await req.json();
 
     if (action === 'list') {
       // List a cell for sale
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       });
 
     } else if (action === 'buy') {
-      // Buy a listed cell
+      // Buy a listed cell using atomic function to prevent race conditions
       if (!cell_id || !territory_id) {
         return new Response(JSON.stringify({ error: 'Cell ID and target territory required' }), {
           status: 400,
@@ -163,73 +163,31 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check buyer has enough currency
-      const { data: wallet } = await supabase
-        .from('player_wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .single();
+      // Use atomic purchase function to prevent race conditions
+      const { data: purchaseResult, error: purchaseError } = await supabase.rpc('atomic_purchase_cell', {
+        p_buyer_user_id: user.id,
+        p_buyer_territory_id: territory_id,
+        p_cell_id: cell_id,
+        p_transfer_id: transfer.id,
+        p_price: Number(transfer.price)
+      });
 
-      if (!wallet || Number(wallet.balance) < Number(transfer.price)) {
-        return new Response(JSON.stringify({ error: 'Saldo insuficiente' }), {
+      if (purchaseError) {
+        console.error('[sell-cell] Atomic purchase error:', purchaseError);
+        return new Response(JSON.stringify({ error: 'Purchase failed: ' + purchaseError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!purchaseResult?.success) {
+        return new Response(JSON.stringify({ error: purchaseResult?.error || 'Purchase failed' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Get seller info
-      const { data: cell } = await supabase
-        .from('cells')
-        .select('*, territories(owner_id)')
-        .eq('id', cell_id)
-        .single();
-
-      const sellerId = (cell?.territories as any)?.owner_id;
-
-      // Execute sale
-      // 1. Deduct from buyer
-      await supabase
-        .from('player_wallets')
-        .update({ balance: Number(wallet.balance) - Number(transfer.price) })
-        .eq('user_id', user.id);
-
-      // 2. Credit seller
-      if (sellerId) {
-        const { data: sellerWallet } = await supabase
-          .from('player_wallets')
-          .select('balance')
-          .eq('user_id', sellerId)
-          .single();
-
-        if (sellerWallet) {
-          await supabase
-            .from('player_wallets')
-            .update({ balance: Number(sellerWallet.balance) + Number(transfer.price) })
-            .eq('user_id', sellerId);
-        }
-      }
-
-      // 3. Transfer cell ownership
-      await supabase
-        .from('cells')
-        .update({ 
-          owner_territory_id: territory_id,
-          colonized_by: user.id,
-          colonized_at: new Date().toISOString(),
-        })
-        .eq('id', cell_id);
-
-      // 4. Update transfer record
-      await supabase
-        .from('territory_transfers')
-        .update({
-          transfer_type: 'sale_completed',
-          to_territory_id: territory_id,
-          notes: `Purchased by ${buyerTerritory.name}`,
-        })
-        .eq('id', transfer.id);
-
-      // 5. Close market listing if exists
+      // Close market listing if exists
       const listingMatch = transfer.notes?.match(/Listing ID: (.+)/);
       if (listingMatch) {
         await supabase
@@ -238,7 +196,7 @@ Deno.serve(async (req) => {
           .eq('id', listingMatch[1]);
       }
 
-      console.log(`[sell-cell] Cell ${cell_id} sold to territory ${territory_id}`);
+      console.log(`[sell-cell] Cell ${cell_id} sold to territory ${territory_id} atomically`);
 
       return new Response(JSON.stringify({ 
         success: true, 

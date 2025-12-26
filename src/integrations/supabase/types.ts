@@ -2729,6 +2729,65 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      atomic_deduct_currency: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: Json
+      }
+      atomic_deduct_token: {
+        Args: { p_amount?: number; p_token_type: string; p_user_id: string }
+        Returns: Json
+      }
+      atomic_purchase_cell: {
+        Args: {
+          p_buyer_territory_id: string
+          p_buyer_user_id: string
+          p_cell_id: string
+          p_price: number
+          p_transfer_id: string
+        }
+        Returns: Json
+      }
+      atomic_refund_currency: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: Json
+      }
+      atomic_refund_resource: {
+        Args: {
+          p_amount: number
+          p_resource_type: string
+          p_territory_id: string
+        }
+        Returns: Json
+      }
+      atomic_refund_token: {
+        Args: { p_amount?: number; p_token_type: string; p_user_id: string }
+        Returns: Json
+      }
+      atomic_transfer_currency: {
+        Args: { p_amount: number; p_from_user_id: string; p_to_user_id: string }
+        Returns: Json
+      }
+      atomic_transfer_resources: {
+        Args: {
+          p_energy?: number
+          p_food?: number
+          p_from_territory_id: string
+          p_minerals?: number
+          p_tech?: number
+          p_to_territory_id: string
+        }
+        Returns: Json
+      }
+      atomic_transfer_tokens: {
+        Args: {
+          p_city_tokens?: number
+          p_from_user_id: string
+          p_land_tokens?: number
+          p_state_tokens?: number
+          p_to_user_id: string
+        }
+        Returns: Json
+      }
       generate_region_cells: {
         Args: { p_num_cells?: number; p_region_id: string }
         Returns: number
