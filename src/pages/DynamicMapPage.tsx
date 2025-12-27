@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Globe, Grid3X3, Filter, ZoomIn, ZoomOut, Info, Users } from 'lucide-react';
 import { regions, TOTAL_CELLS, CELL_AREA_KM2, GLOBAL_DENSITY, generateAllCellsRebalanced, computeRegionTotals, computeGlobalTotals } from '@/lib/dynamic-map';
+import { getResourceProfile } from '@/lib/dynamic-map';
 
 type Filters = {
   regionId: string | 'all';
@@ -17,6 +18,12 @@ type Filters = {
   owner: 'all' | 'free' | 'owned';
   fertMin: number;
   fertMax: number;
+  resource capacity thresholds
+  minFood?: number;
+  minEnergy?: number;
+  minMinerals?: number;
+  minTech?: number;
+  minInfluence?: number;
 };
 
 const PAGE_SIZE = 500;
@@ -30,6 +37,11 @@ export default function DynamicMapPage() {
     owner: 'all',
     fertMin: 0.2,
     fertMax: 2.0,
+    minFood: 0,
+    minEnergy: 0,
+    minMinerals: 0,
+    minTech: 0,
+    minInfluence: 0,
   });
   const [selectedCell, setSelectedCell] = useState<ReturnType<typeof generateAllCellsRebalanced>[number] | null>(null);
 
@@ -51,6 +63,12 @@ export default function DynamicMapPage() {
       if (filters.owner === 'free' && c.owner_state_id !== null) return false;
       if (filters.owner === 'owned' && c.owner_state_id === null) return false;
       if (c.fertility < filters.fertMin || c.fertility > filters.fertMax) return false;
+      const caps = c.resource_nodes;
+      if (caps.food_capacity < (filters.minFood || 0)) return false;
+      if (caps.energy_capacity < (filters.minEnergy || 0)) return false;
+      if (caps.minerals_capacity < (filters.minMinerals || 0)) return false;
+      if (caps.tech_capacity < (filters.minTech || 0)) return false;
+      if (caps.influence_capacity < (filters.minInfluence || 0)) return false;
       return true;
     });
   }, [pageCells, filters]);
@@ -203,6 +221,26 @@ export default function DynamicMapPage() {
                 onChange={(e) => setFilters((f) => ({ ...f, fertMax: Number(e.target.value) }))}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Food mín</Label>
+              <Input type="number" value={filters.minFood} onChange={(e) => setFilters((f) => ({ ...f, minFood: Number(e.target.value) }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Energy mín</Label>
+              <Input type="number" value={filters.minEnergy} onChange={(e) => setFilters((f) => ({ ...f, minEnergy: Number(e.target.value) }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Minerals mín</Label>
+              <Input type="number" value={filters.minMinerals} onChange={(e) => setFilters((f) => ({ ...f, minMinerals: Number(e.target.value) }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Tech mín</Label>
+              <Input type="number" value={filters.minTech} onChange={(e) => setFilters((f) => ({ ...f, minTech: Number(e.target.value) }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Influence mín</Label>
+              <Input type="number" value={filters.minInfluence} onChange={(e) => setFilters((f) => ({ ...f, minInfluence: Number(e.target.value) }))} />
+            </div>
           </CardContent>
         </Card>
 
@@ -251,37 +289,44 @@ export default function DynamicMapPage() {
                   <TableHead>Habitabilidade</TableHead>
                   <TableHead>População</TableHead>
                   <TableHead>Urbana / Rural</TableHead>
+                  <TableHead>Perfil</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCells.map((cell) => (
-                  <TableRow key={cell.id} className="hover:bg-muted/30">
-                    <TableCell className="font-mono">{cell.id}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{cell.region_name}</Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell className="capitalize">{cell.climate}</TableCell>
-                    <TableCell className={cell.type === 'urban' ? 'text-accent' : 'text-status-active'}>
-                      {cell.type === 'urban' ? 'Urbano' : 'Rural'}
-                    </TableCell>
-                    <TableCell>{cell.fertility}</TableCell>
-                    <TableCell>{cell.habitability}</TableCell>
-                    <TableCell className="font-mono">{cell.population_total.toLocaleString()}</TableCell>
-                    <TableCell className="text-sm">
-                      <div>Urb: {cell.population_urban.toLocaleString()} ({Math.round(cell.urban_share * 100)}%)</div>
-                      <div>Rur: {cell.population_rural.toLocaleString()} ({Math.round(cell.rural_share * 100)}%)</div>
-                    </TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => setSelectedCell(cell)}>
-                        <Info className="w-4 h-4 mr-2" />
-                        Detalhes
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredCells.map((cell) => {
+                  const profile = getResourceProfile(cell);
+                  return (
+                    <TableRow key={cell.id} className="hover:bg-muted/30">
+                      <TableCell className="font-mono">{cell.id}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{cell.region_name}</Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="capitalize">{cell.climate}</TableCell>
+                      <TableCell className={cell.type === 'urban' ? 'text-accent' : 'text-status-active'}>
+                        {cell.type === 'urban' ? 'Urbano' : 'Rural'}
+                      </TableCell>
+                      <TableCell>{cell.fertility}</TableCell>
+                      <TableCell>{cell.habitability}</TableCell>
+                      <TableCell className="font-mono">{cell.population_total.toLocaleString()}</TableCell>
+                      <TableCell className="text-sm">
+                        <div>Urb: {cell.population_urban.toLocaleString()} ({Math.round(cell.urban_share * 100)}%)</div>
+                        <div>Rur: {cell.population_rural.toLocaleString()} ({Math.round(cell.rural_share * 100)}%)</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{profile.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="outline" onClick={() => setSelectedCell(cell)}>
+                          <Info className="w-4 h-4 mr-2" />
+                          Detalhes
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             {filteredCells.length === 0 && (
@@ -327,6 +372,55 @@ export default function DynamicMapPage() {
           </CardContent>
         </Card>
 
+        {/* NEW: Mapa de recursos (rankings) */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Mapa de Recursos — Rankings Top 10</CardTitle>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { key: 'food_capacity', title: 'Alimentos' },
+              { key: 'energy_capacity', title: 'Energia' },
+              { key: 'minerals_capacity', title: 'Minerais' },
+              { key: 'tech_capacity', title: 'Tecnologia' },
+              { key: 'influence_capacity', title: 'Influência' },
+            ].map((res) => {
+              const top = [...allCells]
+                .sort((a, b) => b.resource_nodes[res.key as keyof typeof a.resource_nodes] - a.resource_nodes[res.key as keyof typeof a.resource_nodes])
+                .slice(0, 10);
+              return (
+                <Card key={res.key} className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="text-sm">{res.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Região</TableHead>
+                          <TableHead>Capacidade</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {top.map((c) => (
+                          <TableRow key={`${res.key}-${c.id}`}>
+                            <TableCell className="font-mono">{c.id}</TableCell>
+                            <TableCell className="text-xs">{c.region_name}</TableCell>
+                            <TableCell className="font-mono">
+                              {c.resource_nodes[res.key as keyof typeof c.resource_nodes] as number}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </CardContent>
+        </Card>
+
         {/* Cell details dialog */}
         <Dialog open={!!selectedCell} onOpenChange={(o) => !o && setSelectedCell(null)}>
           <DialogContent className="max-w-2xl">
@@ -348,6 +442,12 @@ export default function DynamicMapPage() {
                     <div className="flex justify-between"><span>Tipo</span><span>{selectedCell.type === 'urban' ? 'Urbano' : 'Rural'}</span></div>
                     <div className="flex justify-between"><span>Status</span><span>Livre</span></div>
                     <div className="flex justify-between"><span>Área</span><span className="font-mono">{CELL_AREA_KM2.toLocaleString()} km²</span></div>
+                    <div className="flex justify-between">
+                      <span>Perfil de recursos</span>
+                      <span className="font-mono">
+                        {getResourceProfile(selectedCell).label}
+                      </span>
+                    </div>
                   </CardContent>
                 </Card>
 

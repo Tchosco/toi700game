@@ -94,6 +94,12 @@ function clamp(v: number, min: number, max: number) {
 function randRange(rnd: () => number, min: number, max: number) {
   return min + rnd() * (max - min);
 }
+function norm(value: number, min: number, max: number) {
+  return clamp((value - min) / (max - min), 0, 1);
+}
+function scaleRange(min: number, max: number, t: number) {
+  return Math.round(min + t * (max - min));
+}
 
 export const regions: RegionConfig[] = [
   // Tropical & Temperate: mais fertility e urbanization_pull
@@ -200,24 +206,22 @@ export function generateCell(id: number, seedGlobal: string): GeneratedCell {
 
   // Urban probability scaled by region pull
   let urbanProb = BASE_URBAN_RATIO * region.urbanization_pull;
-  urbanProb = clamp(urbanProb, 0.05, 0.45); // clamp for coherence
+  urbanProb = clamp(urbanProb, 0.05, 0.45);
 
   const isUrban = rnd() < urbanProb;
   const type: 'rural' | 'urban' = isUrban ? 'urban' : 'rural';
 
-  // Attributes with region bases + noise, clamped 0.2..2.0
+  // Attributes
   const fertility = clamp(region.fertility_base + noise(rnd, 0.4), 0.2, 2.0);
   const habitability = clamp(region.habitability_base + noise(rnd, 0.3), 0.2, 2.0);
   const mineral_richness = clamp(region.mineral_base + noise(rnd, 0.45), 0.2, 2.0);
   const energy_potential = clamp(region.energy_base + noise(rnd, 0.4), 0.2, 2.0);
 
-  // 1) densidade_base_celula = densidade_media * habitability * (0.85..1.25 por seed)
+  // População (determinística)
   const densidadeBase = GLOBAL_DENSITY * habitability * randRange(rnd, 0.85, 1.25);
-
-  // 2) population_total_cell = round(densidade_base_celula * cell_size_km2)
   const population_total = Math.round(densidadeBase * CELL_AREA_KM2);
 
-  // 3) shares conforme tipo, fertility e urbanization_pull, com variação 0.90..1.10
+  // Shares
   const shares = isUrban
     ? computeSharesForUrbanCell(rnd, fertility, region.urbanization_pull)
     : computeSharesForRuralCell(rnd, fertility, region.urbanization_pull);
@@ -228,12 +232,60 @@ export function generateCell(id: number, seedGlobal: string): GeneratedCell {
   const population_rural = Math.round(population_total * rural_share);
   const population_urban = population_total - population_rural;
 
-  // Resource capacities derivadas dos atributos e tipo
-  const food_capacity = Math.round(100 * fertility * (isUrban ? 0.6 : 1.2));
-  const energy_capacity = Math.round(100 * energy_potential * (isUrban ? 1.1 : 0.9));
-  const minerals_capacity = Math.round(100 * mineral_richness * (isUrban ? 0.8 : 1.2));
-  const tech_capacity = Math.round(100 * (isUrban ? habitability * 1.3 : habitability * 0.4));
-  const influence_capacity = Math.round(100 * (isUrban ? habitability * 1.2 : habitability * 0.3));
+  // Deterministic variation for resources
+  const varFactor = randRange(rnd, 0.90, 1.10);
+
+  // Normalized factors for correlations
+  const fertN = norm(fertility, 0.2, 2.0);
+  const habN = norm(habitability, 0.2, 2.0);
+  const minN = norm(mineral_richness, 0.2, 2.0);
+  const eneN = norm(energy_potential, 0.2, 2.0);
+  const urbPullN = norm(region.urbanization_pull, 0.6, 1.7);
+
+  // Relative population factors (avoid global averages; use shares)
+  const ruralPopFactor = clamp(rural_share, 0.3, 0.9);
+  const urbanPopFactor = clamp(urban_share, 0.1, 0.9);
+
+  // Resource capacities with suggested ranges and correlations
+  let food_capacity: number;
+  let minerals_capacity: number;
+  let energy_capacity: number;
+  let tech_capacity: number;
+  let influence_capacity: number;
+
+  if (!isUrban) {
+    // Rural: food 20..120; minerals 10..90; energy 10..80; tech 0..20; influence 0..15
+    const foodT = clamp(0.55 * fertN + 0.35 * ruralPopFactor + 0.10 * habN, 0, 1);
+    const minT = clamp(0.8 * minN + 0.2 * ruralPopFactor, 0, 1);
+    const eneT = clamp(0.7 * eneN + 0.3 * habN, 0, 1);
+    const techT = clamp(0.4 * urbanPopFactor + 0.3 * habN + 0.3 * urbPullN, 0, 1);
+    const inflT = clamp(0.5 * urbanPopFactor + 0.5 * urbPullN, 0, 1);
+
+    food_capacity = Math.max(1, Math.round(scaleRange(20, 120, foodT) * varFactor));
+    minerals_capacity = Math.max(1, Math.round(scaleRange(10, 90, minT) * varFactor));
+    energy_capacity = Math.max(1, Math.round(scaleRange(10, 80, eneT) * varFactor));
+    tech_capacity = Math.round(scaleRange(0, 20, techT) * varFactor);
+    influence_capacity = Math.round(scaleRange(0, 15, inflT) * varFactor);
+  } else {
+    // Urban: food 10..60; minerals 10..70; energy 20..100; tech 20..140; influence 15..120
+    const foodT = clamp(0.45 * fertN + 0.35 * ruralPopFactor + 0.20 * habN, 0, 1);
+    const minT = clamp(0.75 * minN + 0.25 * urbanPopFactor, 0, 1);
+    const eneT = clamp(0.75 * eneN + 0.25 * urbPullN, 0, 1);
+    const techT = clamp(0.5 * urbanPopFactor + 0.35 * urbPullN + 0.15 * habN, 0, 1);
+    const inflT = clamp(0.6 * urbanPopFactor + 0.4 * urbPullN, 0, 1);
+
+    food_capacity = Math.max(1, Math.round(scaleRange(10, 60, foodT) * varFactor));
+    minerals_capacity = Math.max(1, Math.round(scaleRange(10, 70, minT) * varFactor));
+    energy_capacity = Math.max(1, Math.round(scaleRange(20, 100, eneT) * varFactor));
+    tech_capacity = Math.max(1, Math.round(scaleRange(20, 140, techT) * varFactor));
+    influence_capacity = Math.max(1, Math.round(scaleRange(15, 120, inflT) * varFactor));
+  }
+
+  // Guarantee not all zeros (ranges already > 0, but keep a safety)
+  const sumCaps = food_capacity + energy_capacity + minerals_capacity + tech_capacity + influence_capacity;
+  if (sumCaps <= 0) {
+    food_capacity = Math.max(1, food_capacity);
+  }
 
   return {
     id,
@@ -383,4 +435,18 @@ export function computeGlobalTotals(cells: GeneratedCell[]) {
   const urban = cells.reduce((s, c) => s + c.population_urban, 0);
   const rural = cells.reduce((s, c) => s + c.population_rural, 0);
   return { total, urban, rural };
+}
+
+// NEW: helper para perfil de recursos (categoria pelo maior capacity)
+export function getResourceProfile(cell: GeneratedCell) {
+  const caps = cell.resource_nodes;
+  const entries = [
+    { key: 'food_capacity', label: 'Agrário' as const, value: caps.food_capacity },
+    { key: 'minerals_capacity', label: 'Minerador' as const, value: caps.minerals_capacity },
+    { key: 'energy_capacity', label: 'Energético' as const, value: caps.energy_capacity },
+    { key: 'tech_capacity', label: 'Tecnológico' as const, value: caps.tech_capacity },
+    { key: 'influence_capacity', label: 'Cívico' as const, value: caps.influence_capacity },
+  ];
+  entries.sort((a, b) => b.value - a.value);
+  return entries[0];
 }
