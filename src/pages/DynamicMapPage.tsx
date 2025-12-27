@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Globe, Grid3X3, Filter, ZoomIn, ZoomOut, Info } from 'lucide-react';
-import { generateCell, regions, TOTAL_CELLS, CELL_AREA_KM2, GLOBAL_DENSITY } from '@/lib/dynamic-map';
+import { Globe, Grid3X3, Filter, ZoomIn, ZoomOut, Info, Users } from 'lucide-react';
+import { regions, TOTAL_CELLS, CELL_AREA_KM2, GLOBAL_DENSITY, generateAllCellsRebalanced, computeRegionTotals, computeGlobalTotals } from '@/lib/dynamic-map';
 
 type Filters = {
   regionId: string | 'all';
@@ -31,19 +31,18 @@ export default function DynamicMapPage() {
     fertMin: 0.2,
     fertMax: 2.0,
   });
-  const [selectedCell, setSelectedCell] = useState<ReturnType<typeof generateCell> | null>(null);
+  const [selectedCell, setSelectedCell] = useState<ReturnType<typeof generateAllCellsRebalanced>[number] | null>(null);
+
+  // Gera todas as células com rebalanço para somar exatamente 11B
+  const allCells = useMemo(() => generateAllCellsRebalanced(seed), [seed]);
 
   const totalPages = Math.ceil(TOTAL_CELLS / PAGE_SIZE);
   const startId = (page - 1) * PAGE_SIZE + 1;
   const endId = Math.min(page * PAGE_SIZE, TOTAL_CELLS);
 
   const pageCells = useMemo(() => {
-    const arr: ReturnType<typeof generateCell>[] = [];
-    for (let id = startId; id <= endId; id++) {
-      arr.push(generateCell(id, seed));
-    }
-    return arr;
-  }, [startId, endId, seed]);
+    return allCells.slice(startId - 1, endId);
+  }, [allCells, startId, endId]);
 
   const filteredCells = useMemo(() => {
     return pageCells.filter((c) => {
@@ -55,6 +54,9 @@ export default function DynamicMapPage() {
       return true;
     });
   }, [pageCells, filters]);
+
+  const regionTotals = useMemo(() => computeRegionTotals(allCells), [allCells]);
+  const globalTotals = useMemo(() => computeGlobalTotals(allCells), [allCells]);
 
   const handlePrev = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
@@ -70,12 +72,49 @@ export default function DynamicMapPage() {
               Mapa Dinâmico
             </h1>
             <p className="text-muted-foreground mt-1">
-              Grid de células geradas por semente determinística (seed_global + cell_id)
+              Grid de células geradas por semente determinística (seed_global + cell_id), população coerente e total reequilibrado para 11 bilhões.
             </p>
           </div>
           <Badge variant="outline" className="text-sm">
             {TOTAL_CELLS.toLocaleString()} células • {CELL_AREA_KM2.toLocaleString()} km²/célula • densidade base {GLOBAL_DENSITY} hab/km²
           </Badge>
+        </div>
+
+        {/* Global population summary */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                População Total (Global)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-2xl font-bold">{globalTotals.total.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-accent" />
+                Urbana (Global)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-2xl font-bold text-accent">{globalTotals.urban.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-status-active" />
+                Rural (Global)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-2xl font-bold text-status-active">{globalTotals.rural.toLocaleString()}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Controls */}
@@ -89,7 +128,7 @@ export default function DynamicMapPage() {
           <CardContent className="grid md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Seed Global</Label>
-              <Input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="ex.: TOI-700" />
+              <Input value={seed} onChange={(e) => { setPage(1); setSeed(e.target.value); }} placeholder="ex.: TOI-700" />
             </div>
             <div className="space-y-2">
               <Label>Região</Label>
@@ -210,9 +249,8 @@ export default function DynamicMapPage() {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Fertilidade</TableHead>
                   <TableHead>Habitabilidade</TableHead>
-                  <TableHead>Minerais</TableHead>
-                  <TableHead>Energia</TableHead>
                   <TableHead>População</TableHead>
+                  <TableHead>Urbana / Rural</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -231,9 +269,11 @@ export default function DynamicMapPage() {
                     </TableCell>
                     <TableCell>{cell.fertility}</TableCell>
                     <TableCell>{cell.habitability}</TableCell>
-                    <TableCell>{cell.mineral_richness}</TableCell>
-                    <TableCell>{cell.energy_potential}</TableCell>
                     <TableCell className="font-mono">{cell.population_total.toLocaleString()}</TableCell>
+                    <TableCell className="text-sm">
+                      <div>Urb: {cell.population_urban.toLocaleString()} ({Math.round(cell.urban_share * 100)}%)</div>
+                      <div>Rur: {cell.population_rural.toLocaleString()} ({Math.round(cell.rural_share * 100)}%)</div>
+                    </TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" onClick={() => setSelectedCell(cell)}>
                         <Info className="w-4 h-4 mr-2" />
@@ -249,6 +289,41 @@ export default function DynamicMapPage() {
                 Nenhuma célula encontrada com os filtros atuais.
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Region totals */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Totais por Região</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Região</TableHead>
+                  <TableHead>Clima</TableHead>
+                  <TableHead>Células Urbanas</TableHead>
+                  <TableHead>Células Rurais</TableHead>
+                  <TableHead>População Total</TableHead>
+                  <TableHead>Urbana</TableHead>
+                  <TableHead>Rural</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {regionTotals.map((r) => (
+                  <TableRow key={r.region_id}>
+                    <TableCell className="font-medium">{r.region_name}</TableCell>
+                    <TableCell className="capitalize">{r.climate}</TableCell>
+                    <TableCell>{r.urban_cells.toLocaleString()}</TableCell>
+                    <TableCell>{r.rural_cells.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono">{r.total_population.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-accent">{r.urban_population.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-status-active">{r.rural_population.toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 
