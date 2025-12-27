@@ -306,10 +306,13 @@ async function applyWarehouseCapacity(supabase: Supa, territory_id: string, rb: 
 }
 
 // Consumo por tick
-function computeConsumption(totalPop: number, cityCount: number, hasResearch: boolean) {
+function computeConsumption(totalPop: number, cityCount: number, hasResearch: boolean, level: string | null) {
   const foodConsumption = totalPop * 0.001;
   const energyConsumption = totalPop * 0.0006 + cityCount * 30;
-  const techConsumption = hasResearch ? (10 + 2) : 0; // level factor simples
+  // Level factor: colony=1, autonomous=2, recognized=3, kingdom=4, power=5
+  const levelMap: Record<string, number> = { colony: 1, autonomous: 2, recognized: 3, kingdom: 4, power: 5 };
+  const lvl = level ? (levelMap[level] ?? 1) : 1;
+  const techConsumption = hasResearch ? (10 + lvl * 2) : 0;
   return { foodConsumption, energyConsumption, techConsumption };
 }
 
@@ -511,6 +514,127 @@ async function finalizeTick(supabase: Supa, nextTickNumber: number, started_at: 
     .neq('id', '');
 }
 
+// Helper: compute attractiveness per requested formula
+function computeAttractiveness(stability: number, foodSurplus: number, energySurplus: number, tech: number) {
+  const base = stability;
+  const foodBonus = Math.min(10, (foodSurplus || 0) / 10000);
+  const energyBonus = Math.min(10, (energySurplus || 0) / 10000);
+  const techBonus = Math.min(10, (tech || 0) / 5000);
+  return base + foodBonus + energyBonus + techBonus;
+}
+
+// Global migration redistribution
+async function applyGlobalMigrationBalanced(
+  supabase: Supa,
+  snapshots: Array<{
+    territory_id: string;
+    totalPop: number;
+    ruralPop: number;
+    urbanPop: number;
+    foodAfter: number;
+    energyAfter: number;
+    techAfter: number;
+    stabilityAfter: number;
+    attractiveness: number;
+  }>
+) {
+  if (!snapshots || snapshots.length === 0) return { logs: 0 };
+
+  const avgAttr =
+    snapshots.reduce((sum, s) => sum + s.attractiveness, 0) / snapshots.length;
+
+  // Per-territory caps and desired flows
+  const lows = [];
+  const highs = [];
+  let totalOutDesired = 0;
+  let totalInDesired = 0;
+
+  for (const s of snapshots) {
+    const cap = s.totalPop * 0.002;
+    if (s.attractiveness < avgAttr) {
+      const pressure = (avgAttr - s.attractiveness) / 10; // scale
+      const outDesired = Math.min(cap, Math.round(cap * pressure));
+      totalOutDesired += outDesired;
+      lows.push({ s, outDesired, cap });
+    } else if (s.attractiveness > avgAttr) {
+      const pull = (s.attractiveness - avgAttr) / 10;
+      const inDesired = Math.min(cap, Math.round(cap * pull));
+      totalInDesired += inDesired;
+      highs.push({ s, inDesired, cap });
+    }
+  }
+
+  if (totalOutDesired === 0 || totalInDesired === 0) return { logs: 0 };
+
+  // Normalize incoming to match outgoing mass
+  const inScale = totalOutDesired / totalInDesired;
+  let eventsLogged = 0;
+
+  // Apply outflows
+  for (const item of lows) {
+    const outFlow = item.outDesired;
+    if (outFlow > 0) {
+      const urbanOut = Math.round(outFlow * 0.6);
+      const ruralOut = outFlow - urbanOut;
+      const newUrban = Math.max(0, item.s.urbanPop - urbanOut);
+      const newRural = Math.max(0, item.s.ruralPop - ruralOut);
+      await supabase
+        .from('territories')
+        .update({
+          total_urban_population: newUrban,
+          total_rural_population: newRural,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', item.s.territory_id);
+      if (outFlow > 5000) {
+        await supabase.from('event_logs').insert({
+          territory_id: item.s.territory_id,
+          event_type: 'global',
+          title: 'Migração Saída',
+          description: `Saída líquida de ${outFlow.toLocaleString()} habitantes por baixa atratividade`,
+        });
+        eventsLogged++;
+      }
+      item.s.urbanPop = newUrban;
+      item.s.ruralPop = newRural;
+      item.s.totalPop = newUrban + newRural;
+    }
+  }
+
+  // Apply inflows
+  for (const item of highs) {
+    const inFlow = Math.round(item.inDesired * inScale);
+    if (inFlow > 0) {
+      const urbanIn = Math.round(inFlow * 0.6);
+      const ruralIn = inFlow - urbanIn;
+      const newUrban = item.s.urbanPop + urbanIn;
+      const newRural = item.s.ruralPop + ruralIn;
+      await supabase
+        .from('territories')
+        .update({
+          total_urban_population: newUrban,
+          total_rural_population: newRural,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', item.s.territory_id);
+      if (inFlow > 5000) {
+        await supabase.from('event_logs').insert({
+          territory_id: item.s.territory_id,
+          event_type: 'global',
+          title: 'Migração Entrada',
+          description: `Entrada líquida de ${inFlow.toLocaleString()} habitantes por alta atratividade`,
+        });
+        eventsLogged++;
+      }
+      item.s.urbanPop = newUrban;
+      item.s.ruralPop = newRural;
+      item.s.totalPop = newUrban + newRural;
+    }
+  }
+
+  return { logs: eventsLogged };
+}
+
 // Entry point
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -590,7 +714,7 @@ Deno.serve(async (req) => {
         .limit(1);
       const hasResearch = (rq || []).length > 0;
 
-      const { foodConsumption, energyConsumption, techConsumption } = computeConsumption(totalPop, cityCount, hasResearch);
+      const { foodConsumption, energyConsumption, techConsumption } = computeConsumption(totalPop, cityCount, hasResearch, t.level);
 
       newFood -= foodConsumption;
       newEnergy -= energyConsumption;
@@ -604,10 +728,10 @@ Deno.serve(async (req) => {
       // Crescimento
       await updateCellGrowth(supabase, cells, t.stability || 50, crisis.crisisFood, crisis.crisisEnergy);
 
-      // Migração
+      // Migração será aplicada globalmente depois; apenas calcular atratividade e surplus
       const surplusFood = newFood - foodConsumption;
       const surplusEnergy = newEnergy - energyConsumption;
-      const mig = await applyMigration(supabase, territory_id, urbanPop, ruralPop, totalPop, surplusFood, surplusEnergy, hasResearch, crisis.crisisFood, crisis.crisisEnergy);
+      const attractiveness = computeAttractiveness(t.stability || 50, surplusFood, surplusEnergy, newTech);
 
       // Estabilidade
       const newStability = await applyStability(supabase, territory_id, t.stability || 50, surplusFood, surplusEnergy, crisis.crisisFood, crisis.crisisEnergy, ruralBias, urbanBias);
@@ -617,20 +741,45 @@ Deno.serve(async (req) => {
 
       territoriesProcessed++;
 
-      // Snapshot
+      // Snapshot p/ resumo e migração global
       perStateSnapshots.push({
         territory_id,
         prod: { food: Math.round(prodFood), energy: Math.round(prodEnergy), minerals: Math.round(prodMinerals), tech: Math.round(prodTech) },
         cons: { food: Math.round(foodConsumption), energy: Math.round(energyConsumption), tech: Math.round(techConsumption) },
         crises: { food: crisis.crisisFood, energy: crisis.crisisEnergy, minerals: crisis.crisisMinerals, tech: crisis.crisisTech },
-        migration_net: mig.migrationNet,
+        migration_net: 0, // será definido após migração global
         stability_after: newStability,
         overflow_lost: overflowLost,
+        // Dados para migração global
+        totalPop,
+        ruralPop,
+        urbanPop,
+        foodAfter: newFood,
+        energyAfter: newEnergy,
+        techAfter: newTech,
+        attractiveness,
       });
     }
 
     // Mercado
     const tradesExecuted = await processMarketAutoExecution(supabase);
+
+    // MIGRAÇÃO GLOBAL BALANCEADA
+    const migResult = await applyGlobalMigrationBalanced(
+      supabase,
+      perStateSnapshots.map(s => ({
+        territory_id: s.territory_id,
+        totalPop: s.totalPop,
+        ruralPop: s.ruralPop,
+        urbanPop: s.urbanPop,
+        foodAfter: s.foodAfter,
+        energyAfter: s.energyAfter,
+        techAfter: s.techAfter,
+        stabilityAfter: s.stability_after,
+        attractiveness: s.attractiveness,
+      }))
+    );
+    eventsGenerated += migResult.logs;
 
     // Summary e finalize
     const summary = {
@@ -643,6 +792,19 @@ Deno.serve(async (req) => {
     };
 
     await finalizeTick(supabase, nextTickNumber, started_at, summary, config);
+
+    // Registrar evento planetário de tick concluído
+    await supabase.from('event_logs').insert({
+      event_type: 'global',
+      title: 'Tick concluído',
+      description: `Tick #${nextTickNumber} finalizado: ${territoriesProcessed} Estados processados, ${eventsGenerated} eventos, ${tradesExecuted} trades.`,
+    });
+
+    // Atualizar planet_config.tick_number (se existir)
+    await supabase
+      .from('planet_config')
+      .update({ tick_number: nextTickNumber })
+      .neq('id', '');
 
     return new Response(JSON.stringify({ success: true, tick_number: nextTickNumber, summary }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

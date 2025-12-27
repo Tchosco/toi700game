@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from './AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,11 +9,15 @@ import { Loader2, Play, Clock, AlertTriangle, CheckCircle, Zap, Calendar } from 
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 
 export default function AdminTickEngine() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isExecuting, setIsExecuting] = useState(false);
+  const [autoRunDev, setAutoRunDev] = useState(false);
+  const [intervalMinutes, setIntervalMinutes] = useState(60);
 
   // Fetch world config
   const { data: worldConfig, isLoading: configLoading } = useQuery({
@@ -61,7 +65,11 @@ export default function AdminTickEngine() {
   const executeTick = useMutation({
     mutationFn: async () => {
       setIsExecuting(true);
-      const { data, error } = await supabase.functions.invoke('process-tick');
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      const { data, error } = await supabase.functions.invoke('process-tick', {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (error) throw error;
       return data;
     },
@@ -85,6 +93,18 @@ export default function AdminTickEngine() {
       setIsExecuting(false);
     },
   });
+
+  useEffect(() => {
+    if (!autoRunDev) return;
+    const minutes = Math.max(1, Number(intervalMinutes) || 60);
+    const ms = minutes * 60 * 1000;
+    const timer = setInterval(() => {
+      if (!isExecuting) {
+        executeTick.mutate();
+      }
+    }, ms);
+    return () => clearInterval(timer);
+  }, [autoRunDev, intervalMinutes, isExecuting]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -192,24 +212,41 @@ export default function AdminTickEngine() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              onClick={() => executeTick.mutate()}
-              disabled={isExecuting}
-              className="w-full md:w-auto"
-              size="lg"
-            >
-              {isExecuting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Executar Tick (Admin)
-                </>
-              )}
-            </Button>
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <Button
+                onClick={() => executeTick.mutate()}
+                disabled={isExecuting}
+                className="w-full md:w-auto"
+                size="lg"
+              >
+                {isExecuting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Executar Tick (Admin)
+                  </>
+                )}
+              </Button>
+
+              {/* Dev auto scheduler */}
+              <div className="flex items-center gap-3">
+                <Switch checked={autoRunDev} onCheckedChange={setAutoRunDev} />
+                <span className="text-sm text-muted-foreground">Auto (Dev)</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={intervalMinutes}
+                  onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+                  className="w-24"
+                  placeholder="min"
+                />
+                <span className="text-xs text-muted-foreground">min entre ticks</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
