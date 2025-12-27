@@ -33,12 +33,12 @@ export const MapFilters: React.FC<{
     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
       <div>
         <Label>Região</Label>
-        <Select value={filters.regionId || ""} onValueChange={(v) => set({ regionId: v || undefined })}>
+        <Select value={filters.regionId ?? "all"} onValueChange={(v) => set({ regionId: v === "all" ? undefined : v })}>
           <SelectTrigger className="bg-muted/50">
             <SelectValue placeholder="Todas" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
             {regions.map((r) => (
               <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
             ))}
@@ -47,12 +47,12 @@ export const MapFilters: React.FC<{
       </div>
       <div>
         <Label>Tipo</Label>
-        <Select value={filters.type || ""} onValueChange={(v) => set({ type: (v || undefined) as any })}>
+        <Select value={filters.type ?? "all"} onValueChange={(v) => set({ type: v === "all" ? undefined : (v as any) })}>
           <SelectTrigger className="bg-muted/50">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="rural">Rural</SelectItem>
             <SelectItem value="urban">Urbano</SelectItem>
             <SelectItem value="neutral">Neutro</SelectItem>
@@ -61,12 +61,12 @@ export const MapFilters: React.FC<{
       </div>
       <div>
         <Label>Status</Label>
-        <Select value={filters.status || ""} onValueChange={(v) => set({ status: (v || undefined) as any })}>
+        <Select value={filters.status ?? "all"} onValueChange={(v) => set({ status: v === "all" ? undefined : (v as any) })}>
           <SelectTrigger className="bg-muted/50">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="explored">Livre</SelectItem>
             <SelectItem value="colonized">Ocupado</SelectItem>
           </SelectContent>
@@ -74,12 +74,12 @@ export const MapFilters: React.FC<{
       </div>
       <div>
         <Label>Recurso Predominante</Label>
-        <Select value={filters.predominant || ""} onValueChange={(v) => set({ predominant: (v || undefined) as any })}>
+        <Select value={filters.predominant ?? "all"} onValueChange={(v) => set({ predominant: v === "all" ? undefined : (v as any) })}>
           <SelectTrigger className="bg-muted/50">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="food">Food</SelectItem>
             <SelectItem value="energy">Energy</SelectItem>
             <SelectItem value="minerals">Minerals</SelectItem>
