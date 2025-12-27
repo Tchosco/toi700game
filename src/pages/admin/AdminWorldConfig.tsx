@@ -35,7 +35,7 @@ export default function AdminWorldConfig() {
     season_day: 1,
   });
 
-  // Atualiza os campos do formulário quando a configuração for carregada
+  // Update form data when config loads
   useEffect(() => {
     if (config) {
       setFormData({
@@ -43,8 +43,8 @@ export default function AdminWorldConfig() {
         initial_playable_land_km2: Number(config.initial_playable_land_km2),
         total_planet_land_km2: Number(config.total_planet_land_km2),
         max_urban_ratio: Number(config.max_urban_ratio),
-        tick_interval_hours: config.tick_interval_hours,
-        season_day: config.season_day,
+        tick_interval_hours: Number(config.tick_interval_hours),
+        season_day: Number(config.season_day),
       });
     }
   }, [config]);
@@ -64,6 +64,67 @@ export default function AdminWorldConfig() {
     },
     onError: (error) => {
       toast.error('Erro ao atualizar: ' + error.message);
+    },
+  });
+
+  // Apply official TOI-700 parameters and persist in both configs
+  const applyToi700Mutation = useMutation({
+    mutationFn: async () => {
+      if (!config?.id) throw new Error('Configuração não carregada');
+
+      // Official parameters
+      const newValues = {
+        cell_size_km2_default: 5000,
+        initial_playable_land_km2: 321_363_000, // planeta totalmente liberado
+        total_planet_land_km2: 321_363_000,
+        total_planet_population: 11_000_000_000,
+        tick_interval_hours: 24,
+        max_urban_ratio: formData.max_urban_ratio,
+      };
+
+      const { error: worldErr } = await supabase
+        .from('world_config')
+        .update(newValues)
+        .eq('id', config.id);
+      if (worldErr) throw worldErr;
+
+      // Derived values
+      const totalCellsLand = Math.round(321_363_000 / 5000);
+      const densidadeMedia = (11_000_000_000 / 321_363_000).toFixed(2);
+
+      // Save extra keys in planetary_config (key/value store)
+      const kv = [
+        { key: 'planeta_area_total_km2', value: '714140000' },
+        { key: 'proporcao_area_seca', value: '0.45' },
+        { key: 'area_seca_total_km2', value: '321363000' },
+        { key: 'cell_size_km2', value: '5000' },
+        { key: 'total_cells_land', value: String(totalCellsLand) },
+        { key: 'total_population', value: '11000000000' },
+        { key: 'densidade_media', value: String(densidadeMedia) },
+        { key: 'tick_interval_hours', value: '24' },
+        { key: 'planeta_totalmente_liberado', value: 'true' },
+      ];
+
+      const { error: cfgErr } = await supabase
+        .from('planetary_config')
+        .upsert(kv, { onConflict: 'key' });
+      if (cfgErr) throw cfgErr;
+    },
+    onSuccess: () => {
+      const updated = {
+        cell_size_km2_default: 5000,
+        initial_playable_land_km2: 321_363_000,
+        total_planet_land_km2: 321_363_000,
+        max_urban_ratio: formData.max_urban_ratio,
+        tick_interval_hours: 24,
+        season_day: formData.season_day,
+      };
+      setFormData(updated);
+      queryClient.invalidateQueries({ queryKey: ['world-config'] });
+      toast.success('Parâmetros TOI-700 aplicados!');
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao aplicar: ' + error.message);
     },
   });
 
@@ -97,13 +158,23 @@ export default function AdminWorldConfig() {
               Parâmetros globais do planeta TOI-700
             </p>
           </div>
-          <Button
-            onClick={() => setIsEditing(!isEditing)}
-            variant={isEditing ? 'secondary' : 'default'}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            {isEditing ? 'Cancelar' : 'Editar'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setIsEditing(!isEditing)}
+              variant={isEditing ? 'secondary' : 'default'}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              {isEditing ? 'Cancelar' : 'Editar'}
+            </Button>
+            <Button
+              onClick={() => applyToi700Mutation.mutate()}
+              variant="outline"
+              disabled={applyToi700Mutation.isPending}
+            >
+              <Globe className="w-4 h-4 mr-2" />
+              {applyToi700Mutation.isPending ? 'Aplicando...' : 'Aplicar TOI-700'}
+            </Button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">

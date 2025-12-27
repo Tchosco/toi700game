@@ -51,6 +51,7 @@ import NotFound from "./pages/NotFound";
 import AchievementsPage from "./pages/AchievementsPage";
 import MissionsPage from "./pages/MissionsPage";
 import TechTreePage from "./pages/TechTreePage";
+import PlanetPage from "./pages/PlanetPage";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="/conquistas" element={<AchievementsPage />} />
             <Route path="/missoes" element={<MissionsPage />} />
             <Route path="/tecnologia" element={<TechTreePage />} />
+            <Route path="/planeta" element={<PlanetPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/territories" element={<AdminTerritories />} />
