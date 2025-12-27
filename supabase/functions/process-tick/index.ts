@@ -82,6 +82,96 @@ Deno.serve(async (req) => {
       lawsByTerritory.set(law.territory_id, arr);
     }
 
+    // Before iterating territories, process construction queue ticks
+    const { data: queue } = await supabase
+      .from('construction_queue')
+      .select('*')
+      .eq('status', 'in_progress');
+
+    for (const q of queue || []) {
+      const remaining = Math.max(0, (q.remaining_ticks || 0) - 1);
+      const newStatus = remaining <= 0 ? 'completed' : 'in_progress';
+
+      await supabase
+        .from('construction_queue')
+        .update({ remaining_ticks: remaining, status: newStatus })
+        .eq('id', q.id);
+
+      if (newStatus === 'completed') {
+        if (q.level === 'national') {
+          // Create infra_national and apply effects
+          await supabase.from('infra_national').insert({
+            territory_id: q.territory_id,
+            type_key: q.type_key,
+            started_at: q.started_at,
+            completed_at: new Date().toISOString(),
+            status: 'active',
+            maintenance_active: true
+          });
+
+          // Apply capacity/stability bonuses if defined
+          const { data: tdef } = await supabase
+            .from('national_infrastructure_types')
+            .select('effects')
+            .eq('key', q.type_key)
+            .maybeSingle();
+
+          const eff = tdef?.effects || {};
+          if (eff.capacity_bonus) {
+            const { data: rb } = await supabase
+              .from('resource_balances')
+              .select('*')
+              .eq('territory_id', q.territory_id)
+              .maybeSingle();
+            if (rb) {
+              await supabase
+                .from('resource_balances')
+                .update({ capacity_total: (rb.capacity_total || 10000) + Number(eff.capacity_bonus), updated_at: new Date().toISOString() })
+                .eq('territory_id', q.territory_id);
+            }
+          }
+          if (eff.stability_bonus) {
+            const { data: tt } = await supabase
+              .from('territories')
+              .select('stability')
+              .eq('id', q.territory_id)
+              .maybeSingle();
+            if (tt) {
+              await supabase
+                .from('territories')
+                .update({ stability: clamp((tt.stability || 50) + Number(eff.stability_bonus), 0, 100), updated_at: new Date().toISOString() })
+                .eq('id', q.territory_id);
+            }
+          }
+
+          await supabase.from('event_logs').insert({
+            territory_id: q.territory_id,
+            event_type: 'global',
+            title: 'Infraestrutura Concluída',
+            description: `Construção nacional concluída: ${q.type_key}`,
+          });
+        } else {
+          // cell level
+          await supabase.from('infra_cell').insert({
+            territory_id: q.territory_id,
+            cell_id: q.cell_id,
+            type_key: q.type_key,
+            started_at: q.started_at,
+            completed_at: new Date().toISOString(),
+            status: 'active',
+            maintenance_active: true
+          });
+
+          await supabase.from('event_logs').insert({
+            territory_id: q.territory_id,
+            event_type: 'global',
+            title: 'Infraestrutura Local Concluída',
+            description: `Construção local concluída na célula ${q.cell_id}: ${q.type_key}`,
+          });
+        }
+      }
+    }
+
     for (const t of territories || []) {
       const territory_id = t.id;
 

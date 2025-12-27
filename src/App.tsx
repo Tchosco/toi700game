@@ -53,6 +53,10 @@ import MissionsPage from "./pages/MissionsPage";
 import TechTreePage from "./pages/TechTreePage";
 import PlanetPage from "./pages/PlanetPage";
 import DynamicMapPage from "./pages/DynamicMapPage";
+import RankingsPage from "./pages/RankingsPage";
+import InfrastructureNationalPage from "./pages/InfrastructureNationalPage";
+import InfrastructureCellPage from "./pages/InfrastructureCellPage";
+import ConstructionQueuePage from "./pages/ConstructionQueuePage";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +97,10 @@ const App = () => (
             <Route path="/planeta" element={<PlanetPage />} />
             <Route path="/mapa-dinamico" element={<DynamicMapPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
+            <Route path="/rankings" element={<RankingsPage />} />
+            <Route path="/infra/nacional" element={<InfrastructureNationalPage />} />
+            <Route path="/infra/celula" element={<InfrastructureCellPage />} />
+            <Route path="/infra/fila" element={<ConstructionQueuePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/territories" element={<AdminTerritories />} />
             <Route path="/admin/tokens" element={<AdminTokens />} />
