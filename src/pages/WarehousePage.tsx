@@ -92,6 +92,7 @@ export default function WarehousePage() {
   const [resourceBalance, setResourceBalance] = useState<ResourceBalance | null>(null);
   const [previousBalance, setPreviousBalance] = useState<ResourceBalance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cityCount, setCityCount] = useState(0);
 
   useEffect(() => {
     fetchTerritories();
@@ -100,6 +101,7 @@ export default function WarehousePage() {
   useEffect(() => {
     if (selectedTerritory) {
       fetchResourceBalance(selectedTerritory);
+      fetchCityCount(selectedTerritory);
     }
   }, [selectedTerritory]);
 
@@ -150,7 +152,18 @@ export default function WarehousePage() {
     }
   }
 
+  async function fetchCityCount(territoryId: string) {
+    const { data } = await supabase
+      .from('cities')
+      .select('id')
+      .eq('owner_territory_id', territoryId);
+    setCityCount((data || []).length);
+  }
+
   const territory = territories.find(t => t.id === selectedTerritory);
+
+  // Capacidade total: base 10.000 + 2.000 por cidade
+  const capacityTotal = 10000 + cityCount * 2000;
 
   // Calculate production/consumption estimates
   const calculateFlows = (): ResourceFlow[] => {
@@ -324,6 +337,16 @@ export default function WarehousePage() {
                 </p>
               </CardContent>
             </Card>
+            <Card className="glass-card">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Warehouse className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Capacidade do Armazém</span>
+                </div>
+                <p className="text-2xl font-bold">{capacityTotal.toLocaleString('pt-BR')}</p>
+                <p className="text-xs text-muted-foreground mt-1">Base 10.000 + 2.000 por cidade ({cityCount})</p>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -340,6 +363,8 @@ export default function WarehousePage() {
                 const value = resourceBalance?.[key as keyof ResourceBalance] as number || 0;
                 const prevValue = previousBalance?.[key as keyof ResourceBalance] as number || value;
                 const diff = value - prevValue;
+                const usage = Math.min(100, Math.round((value / Math.max(1, capacityTotal)) * 100));
+                const overflow = capacityTotal > 0 && value > capacityTotal;
 
                 return (
                   <Card key={key} className={`glass-card border-l-4 ${info.bgColor.replace('/10', '')}`}>
@@ -357,6 +382,22 @@ export default function WarehousePage() {
                       {previousBalance && diff !== 0 && (
                         <p className={`text-sm ${diff > 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {diff > 0 ? '+' : ''}{formatNumber(diff)} desde último tick
+                        </p>
+                      )}
+                      <div className="mt-3">
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>Uso de capacidade</span>
+                          <span>{usage}%</span>
+                        </div>
+                        <Progress value={usage} className={`h-2 ${overflow ? 'bg-red-500/20' : ''}`} />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>Capacidade</span>
+                          <span>{capacityTotal.toLocaleString('pt-BR')}</span>
+                        </div>
+                      </div>
+                      {overflow && (
+                        <p className="text-xs mt-2 text-red-500">
+                          Excedente descartado por falta de capacidade
                         </p>
                       )}
                       <p className="text-xs text-muted-foreground mt-2">{info.description}</p>
@@ -492,6 +533,21 @@ export default function WarehousePage() {
                         <p className="text-sm text-muted-foreground">
                           Sem energia, as cidades não funcionam corretamente.
                           A produção será reduzida.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {(resourceBalance.food > capacityTotal || resourceBalance.energy > capacityTotal || resourceBalance.minerals > capacityTotal || resourceBalance.tech > capacityTotal) && (
+                  <Card className="border-red-500/50 bg-red-500/5">
+                    <CardContent className="flex items-center gap-4 py-4">
+                      <AlertTriangle className="h-8 w-8 text-red-500" />
+                      <div>
+                        <h3 className="font-bold text-red-500">Overflow no Armazém</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Alguns recursos excederam a capacidade ({capacityTotal.toLocaleString('pt-BR')}) e foram descartados. 
+                          Aumente a capacidade com mais cidades/infra ou reduza a produção/estoque.
                         </p>
                       </div>
                     </CardContent>

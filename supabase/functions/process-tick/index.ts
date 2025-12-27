@@ -318,6 +318,57 @@ Deno.serve(async (req) => {
         urbanMigration = Math.floor(territoryRuralPop * 0.0005);
       }
 
+      // Clamp negatives to zero before capacity handling
+      totalFood = Math.max(0, totalFood);
+      totalEnergy = Math.max(0, totalEnergy);
+      totalMinerals = Math.max(0, totalMinerals);
+      totalTech = Math.max(0, totalTech);
+
+      // Warehouse capacity: base 10.000 + 2.000 por cidade (bônus simples)
+      const capacityTotal = 10000 + (territoryCities.length * 2000);
+
+      // Se exceder capacidade, excedente é perdido e gera alerta + leve penalidade
+      const overflowEvents: { resource: string; overflow: number }[] = [];
+      if (totalFood > capacityTotal) {
+        const overflow = Math.round(totalFood - capacityTotal);
+        totalFood = capacityTotal;
+        overflowEvents.push({ resource: 'food', overflow });
+        newStability = Math.max(0, newStability - 1);
+      }
+      if (totalEnergy > capacityTotal) {
+        const overflow = Math.round(totalEnergy - capacityTotal);
+        totalEnergy = capacityTotal;
+        overflowEvents.push({ resource: 'energy', overflow });
+        newStability = Math.max(0, newStability - 1);
+      }
+      if (totalMinerals > capacityTotal) {
+        const overflow = Math.round(totalMinerals - capacityTotal);
+        totalMinerals = capacityTotal;
+        overflowEvents.push({ resource: 'minerals', overflow });
+        newStability = Math.max(0, newStability - 1);
+      }
+      if (totalTech > capacityTotal) {
+        const overflow = Math.round(totalTech - capacityTotal);
+        totalTech = capacityTotal;
+        overflowEvents.push({ resource: 'tech', overflow });
+        newStability = Math.max(0, newStability - 1);
+      }
+
+      // Registrar eventos de overflow (um por recurso)
+      for (const evt of overflowEvents) {
+        await supabase
+          .from('event_logs')
+          .insert({
+            tick_log_id: tickLog.id,
+            territory_id: territory.id,
+            event_type: 'warehouse_overflow',
+            title: 'Overflow no Armazém',
+            description: `Excedente de ${evt.resource} descartado por falta de capacidade.`,
+            effects: { resource: evt.resource, overflow: evt.overflow, capacity_total: capacityTotal },
+          });
+        eventsGenerated++;
+      }
+
       // Apply population changes to cells
       if (populationGrowth > 0 || urbanMigration > 0) {
         // Distribute growth to rural cells
