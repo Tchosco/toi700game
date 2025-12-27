@@ -49,6 +49,10 @@ interface LawBlock {
   sympathyModifier: number;
   repulsionModifier: number;
   ideologyAffinity: string;
+  tier: 'planet' | 'bloc' | 'country';
+  ruralBias: number;
+  urbanBias: number;
+  tags: string[];
 }
 
 const LAW_BLOCKS: LawBlock[] = [
@@ -63,6 +67,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 15,
     repulsionModifier: 5,
     ideologyAffinity: 'liberal',
+    tier: 'country',
+    ruralBias: 5,
+    urbanBias: 8,
+    tags: ['mercado','bem-estar'],
   },
   {
     id: 'tax_increase',
@@ -74,6 +82,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: -10,
     repulsionModifier: 20,
     ideologyAffinity: 'statist',
+    tier: 'bloc',
+    ruralBias: -5,
+    urbanBias: -2,
+    tags: ['controle','finanças'],
   },
   {
     id: 'free_trade',
@@ -85,6 +97,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 10,
     repulsionModifier: 8,
     ideologyAffinity: 'liberal',
+    tier: 'planet',
+    ruralBias: -2,
+    urbanBias: 10,
+    tags: ['mercado','liberdade','comércio'],
   },
   {
     id: 'protectionism',
@@ -96,6 +112,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 8,
     repulsionModifier: 12,
     ideologyAffinity: 'nationalist',
+    tier: 'country',
+    ruralBias: 8,
+    urbanBias: -5,
+    tags: ['controle','produção','indústria'],
   },
   // Social Blocks
   {
@@ -108,6 +128,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 20,
     repulsionModifier: 3,
     ideologyAffinity: 'social',
+    tier: 'bloc',
+    ruralBias: 10,
+    urbanBias: 12,
+    tags: ['bem-estar','serviços'],
   },
   {
     id: 'education',
@@ -119,6 +143,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 18,
     repulsionModifier: 2,
     ideologyAffinity: 'progressive',
+    tier: 'planet',
+    ruralBias: 6,
+    urbanBias: 14,
+    tags: ['bem-estar','tecnologia'],
   },
   {
     id: 'labor_rights',
@@ -130,6 +158,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 15,
     repulsionModifier: 10,
     ideologyAffinity: 'labor',
+    tier: 'country',
+    ruralBias: 10,
+    urbanBias: 6,
+    tags: ['bem-estar','controle'],
   },
   // Territorial Blocks
   {
@@ -142,6 +174,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 10,
     repulsionModifier: 15,
     ideologyAffinity: 'expansionist',
+    tier: 'country',
+    ruralBias: 5,
+    urbanBias: -3,
+    tags: ['expansão','colonização'],
   },
   {
     id: 'urban_development',
@@ -153,6 +189,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 12,
     repulsionModifier: 8,
     ideologyAffinity: 'urban',
+    tier: 'bloc',
+    ruralBias: -10,
+    urbanBias: 15,
+    tags: ['urbanização','produção','tecnologia'],
   },
   {
     id: 'rural_preservation',
@@ -164,6 +204,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 14,
     repulsionModifier: 6,
     ideologyAffinity: 'agrarian',
+    tier: 'country',
+    ruralBias: 15,
+    urbanBias: -10,
+    tags: ['preservação','rural','alimentos'],
   },
   // Military Blocks
   {
@@ -176,6 +220,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 8,
     repulsionModifier: 18,
     ideologyAffinity: 'militarist',
+    tier: 'bloc',
+    ruralBias: 5,
+    urbanBias: -5,
+    tags: ['segurança','defesa'],
   },
   {
     id: 'conscription',
@@ -187,6 +235,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: -5,
     repulsionModifier: 25,
     ideologyAffinity: 'authoritarian',
+    tier: 'country',
+    ruralBias: 2,
+    urbanBias: -8,
+    tags: ['segurança','controle'],
   },
   {
     id: 'pacifism',
@@ -198,6 +250,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 15,
     repulsionModifier: 10,
     ideologyAffinity: 'pacifist',
+    tier: 'planet',
+    ruralBias: 6,
+    urbanBias: 10,
+    tags: ['liberdade','diplomacia'],
   },
   // Scientific Blocks
   {
@@ -210,6 +266,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 12,
     repulsionModifier: 5,
     ideologyAffinity: 'technocrat',
+    tier: 'bloc',
+    ruralBias: 4,
+    urbanBias: 12,
+    tags: ['tecnologia','bem-estar'],
   },
   {
     id: 'tech_sharing',
@@ -221,6 +281,10 @@ const LAW_BLOCKS: LawBlock[] = [
     sympathyModifier: 10,
     repulsionModifier: 8,
     ideologyAffinity: 'cooperative',
+    tier: 'planet',
+    ruralBias: 3,
+    urbanBias: 9,
+    tags: ['diplomacia','tecnologia','liberdade'],
   },
 ];
 
@@ -238,6 +302,7 @@ export default function LawWorkshopPage() {
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [legalLevel, setLegalLevel] = useState<'national' | 'bloc' | 'planetary'>('national');
 
   // Form state
   const [selectedTerritory, setSelectedTerritory] = useState('');
@@ -285,7 +350,30 @@ export default function LawWorkshopPage() {
     setSelectedBlocks(selectedBlocks.filter(b => b.id !== blockId));
   };
 
-  // Calculate totals
+  // Compute synergy and popularity preview
+  const computeSynergy = (blocks: LawBlock[]) => {
+    let synergy = 0;
+    let contradictions = 0;
+    const CONTRADICTORY_TAGS: [string, string][] = [
+      ['mercado', 'controle'],
+      ['expansão', 'preservação'],
+      ['segurança', 'liberdade'],
+    ];
+    for (let i = 0; i < blocks.length; i++) {
+      for (let j = i + 1; j < blocks.length; j++) {
+        const shared = blocks[i].tags.filter(t => blocks[j].tags.includes(t));
+        synergy += shared.length;
+        for (const [a, b] of CONTRADICTORY_TAGS) {
+          const hasA = blocks[i].tags.includes(a) || blocks[j].tags.includes(a);
+          const hasB = blocks[i].tags.includes(b) || blocks[j].tags.includes(b);
+          if (hasA && hasB) contradictions += 1;
+        }
+      }
+    }
+    return { synergy, contradictions };
+  };
+
+  // Calculate totals extended
   const calculateTotals = () => {
     let totalSympathy = 50;
     let totalRepulsion = 50;
@@ -295,12 +383,17 @@ export default function LawWorkshopPage() {
     let socialImpact = 0;
     let territorialImpact = 0;
     let militaryImpact = 0;
+    let ruralBiasSum = 0;
+    let urbanBiasSum = 0;
 
     selectedBlocks.forEach(block => {
       totalSympathy += block.sympathyModifier;
       totalRepulsion += block.repulsionModifier;
       allBonuses.push(...block.bonus);
       allPenalties.push(...block.penalties);
+
+      ruralBiasSum += block.ruralBias;
+      urbanBiasSum += block.urbanBias;
 
       switch (block.type) {
         case 'economic':
@@ -315,6 +408,10 @@ export default function LawWorkshopPage() {
         case 'military':
           militaryImpact += 20;
           break;
+        case 'scientific':
+          socialImpact += 5;
+          territorialImpact += 5;
+          break;
       }
     });
 
@@ -323,19 +420,52 @@ export default function LawWorkshopPage() {
       totalRepulsion += (selectedBlocks.length - 3) * 10;
     }
 
+    const { synergy, contradictions } = computeSynergy(selectedBlocks);
+
+    // Hierarchical adherence adjustments (preview)
+    if (legalLevel === 'planetary') {
+      const badTier = selectedBlocks.filter(b => b.tier !== 'planet').length;
+      totalRepulsion += badTier * 5;
+      totalSympathy -= badTier * 2;
+    } else if (legalLevel === 'bloc') {
+      const countryTier = selectedBlocks.filter(b => b.tier === 'country').length;
+      totalRepulsion += countryTier * 4;
+      totalSympathy -= countryTier * 2;
+    } else {
+      if (contradictions >= 2) {
+        totalRepulsion += 10;
+        totalSympathy -= 5;
+      }
+    }
+
+    const sympathy = Math.max(5, Math.min(95, Math.round(totalSympathy + synergy * 1.5)));
+    const repulsion = Math.max(5, Math.min(95, Math.round(totalRepulsion + contradictions * 3)));
+    const ruralPopularity = Math.max(5, Math.min(95, Math.round(sympathy + ruralBiasSum + (synergy * 0.5) - (contradictions * 2))));
+    const urbanPopularity = Math.max(5, Math.min(95, Math.round(sympathy + urbanBiasSum + (synergy * 0.5) - (contradictions * 2))));
+
     return {
-      sympathy: Math.max(5, Math.min(95, totalSympathy)),
-      repulsion: Math.max(5, Math.min(95, totalRepulsion)),
+      sympathy,
+      repulsion,
       bonuses: allBonuses,
       penalties: allPenalties,
       economicImpact,
       socialImpact,
       territorialImpact,
       militaryImpact,
+      ruralPopularity,
+      urbanPopularity,
+      synergy,
+      contradictions,
     };
   };
 
   const totals = calculateTotals();
+
+  const requiredBlocksByLevel: Record<typeof legalLevel, number> = {
+    planetary: 3,
+    bloc: 2,
+    national: 1,
+  };
 
   const handleCreateLaw = async () => {
     if (!name) {
@@ -346,8 +476,13 @@ export default function LawWorkshopPage() {
       toast.error('Adicione pelo menos um bloco');
       return;
     }
-    if (totals.bonuses.length === 0 || totals.penalties.length === 0) {
-      toast.error('A lei precisa ter bônus e penalidades');
+    if (totals.penalties.length === 0) {
+      toast.error('A lei precisa ter ao menos uma penalidade');
+      return;
+    }
+    const required = requiredBlocksByLevel[legalLevel];
+    if (selectedBlocks.length < required) {
+      toast.error(`Este nível exige pelo menos ${required} bloco(s)`);
       return;
     }
 
@@ -355,11 +490,24 @@ export default function LawWorkshopPage() {
     try {
       const { data: session } = await supabase.auth.getSession();
 
+      // Prepare law_blocks payload
+      const lawBlocksPayload = selectedBlocks.map(b => ({
+        id: b.id,
+        name: b.name,
+        category: b.type,
+        tier: b.tier,
+        positive_effects: b.bonus,
+        negative_effects: b.penalties,
+        rural_bias: b.ruralBias,
+        urban_bias: b.urbanBias,
+        tags: b.tags,
+      }));
+
       const response = await supabase.functions.invoke('create-law', {
         body: {
           name,
-          legal_level: 'national',
-          category: selectedBlocks[0]?.type || 'economia',
+          legal_level: legalLevel,
+          category: selectedBlocks[0]?.type || 'economic',
           description,
           territory_id: selectedTerritory,
           positive_effects: totals.bonuses,
@@ -368,7 +516,8 @@ export default function LawWorkshopPage() {
           social_impact: totals.socialImpact,
           territorial_impact: totals.territorialImpact,
           military_impact: totals.militaryImpact,
-          enact_immediately: true,
+          enact_immediately: legalLevel === 'national',
+          law_blocks: lawBlocksPayload,
         },
         headers: {
           Authorization: `Bearer ${session?.session?.access_token}`,
@@ -378,7 +527,7 @@ export default function LawWorkshopPage() {
       if (response.error) throw new Error(response.error.message);
       if (!response.data.success) throw new Error(response.data.error);
 
-      toast.success('Lei promulgada com sucesso!');
+      toast.success('Lei processada com sucesso!');
       navigate('/leis');
     } catch (error: any) {
       toast.error(error.message || 'Erro ao criar lei');
@@ -430,16 +579,29 @@ export default function LawWorkshopPage() {
             </div>
           </div>
 
-          <Select value={selectedTerritory} onValueChange={setSelectedTerritory}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Selecione território" />
-            </SelectTrigger>
-            <SelectContent>
-              {territories.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <Select value={selectedTerritory} onValueChange={setSelectedTerritory}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecione território" />
+              </SelectTrigger>
+              <SelectContent>
+                {territories.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={legalLevel} onValueChange={(v) => setLegalLevel(v as typeof legalLevel)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Nível Legal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="national">Nacional</SelectItem>
+                <SelectItem value="bloc">Bloco</SelectItem>
+                <SelectItem value="planetary">Planetária</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -493,11 +655,11 @@ export default function LawWorkshopPage() {
                                 <div className="flex items-center gap-4 text-xs">
                                   <span className="text-green-500 flex items-center gap-1">
                                     <ThumbsUp className="h-3 w-3" />
-                                    +{block.sympathyModifier}%
+                                    +{block.sympathyModifier}% 
                                   </span>
                                   <span className="text-red-500 flex items-center gap-1">
                                     <ThumbsDown className="h-3 w-3" />
-                                    +{block.repulsionModifier}%
+                                    +{block.repulsionModifier}% 
                                   </span>
                                 </div>
                               </CardContent>
@@ -558,8 +720,8 @@ export default function LawWorkshopPage() {
                               key={block.id}
                               className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
                             >
-                              <div className={`flex items-center gap-2 ${info.color}`}>
-                                {info.icon}
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs capitalize">{block.tier}</Badge>
                                 <span className="text-sm">{block.name}</span>
                               </div>
                               <Button
@@ -580,25 +742,34 @@ export default function LawWorkshopPage() {
 
                 {/* Totals */}
                 <div className="space-y-3 pt-4 border-t">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-green-500 flex items-center gap-1">
-                        <ThumbsUp className="h-4 w-4" />
-                        Simpatia
-                      </span>
-                      <span>{totals.sympathy}%</span>
-                    </div>
-                    <Progress value={totals.sympathy} className="h-2" />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Sinergia
+                    </span>
+                    <span>{totals.synergy}</span>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-red-500 flex items-center gap-1">
-                        <ThumbsDown className="h-4 w-4" />
-                        Repulsa
-                      </span>
-                      <span>{totals.repulsion}%</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-green-600 flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          Popularidade Rural
+                        </span>
+                        <span>{totals.ruralPopularity}%</span>
+                      </div>
+                      <Progress value={totals.ruralPopularity} className="h-2" />
                     </div>
-                    <Progress value={totals.repulsion} className="h-2 [&>div]:bg-red-500" />
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-purple-600 flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          Popularidade Urbana
+                        </span>
+                        <span>{totals.urbanPopularity}%</span>
+                      </div>
+                      <Progress value={totals.urbanPopularity} className="h-2" />
+                    </div>
                   </div>
                 </div>
 
@@ -641,11 +812,19 @@ export default function LawWorkshopPage() {
                 )}
 
                 {/* Warnings */}
-                {selectedBlocks.length > 3 && (
+                {selectedBlocks.length < requiredBlocksByLevel[legalLevel] && (
                   <div className="flex items-start gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
                     <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
                     <p className="text-xs text-muted-foreground">
-                      Leis com muitos blocos geram mais repulsa popular (+{(selectedBlocks.length - 3) * 10}%)
+                      Este nível exige pelo menos {requiredBlocksByLevel[legalLevel]} bloco(s)
+                    </p>
+                  </div>
+                )}
+                {legalLevel === 'planetary' && selectedBlocks.some(b => b.tier !== 'planet') && (
+                  <div className="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                    <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-muted-foreground">
+                      Leis planetárias exigem blocos de tier planet; blocos inferiores terão penalidades
                     </p>
                   </div>
                 )}

@@ -24,6 +24,49 @@ interface LawInput {
   enact_immediately?: boolean;
 }
 
+interface LawBlockInput {
+  id: string;
+  name: string;
+  category: 'economic' | 'social' | 'territorial' | 'military' | 'scientific';
+  tier: 'planet' | 'bloc' | 'country';
+  positive_effects: string[];
+  negative_effects: string[];
+  rural_bias: number;   // e.g. +15 or -10
+  urban_bias: number;   // e.g. +10 or -15
+  tags: string[];       // e.g. ['mercado','bem-estar']
+}
+
+// Contradictory tag pairs to penalize
+const CONTRADICTORY_TAGS: [string, string][] = [
+  ['mercado', 'controle'],
+  ['expansão', 'preservação'],
+  ['segurança', 'liberdade'],
+];
+
+// Compute synergy score and contradictions count from tags
+function computeSynergyAndContradictions(blocks: LawBlockInput[]): { synergy: number; contradictions: number } {
+  let synergy = 0;
+  let contradictions = 0;
+  // Shared tags across blocks increase synergy
+  for (let i = 0; i < blocks.length; i++) {
+    for (let j = i + 1; j < blocks.length; j++) {
+      const shared = blocks[i].tags.filter(t => blocks[j].tags.includes(t));
+      synergy += shared.length;
+      // Contradictions: if any contradictory tag pair appears across the two blocks
+      for (const [a, b] of CONTRADICTORY_TAGS) {
+        const hasA = blocks[i].tags.includes(a) || blocks[j].tags.includes(a);
+        const hasB = blocks[i].tags.includes(b) || blocks[j].tags.includes(b);
+        if (hasA && hasB) contradictions += 1;
+      }
+    }
+  }
+  return { synergy, contradictions };
+}
+
+function clamp(v: number, min = 5, max = 95) {
+  return Math.max(min, Math.min(max, Math.round(v)));
+}
+
 function calculateSympathyAndRepulsion(
   positiveEffects: string[],
   negativeEffects: string[],
@@ -206,12 +249,96 @@ serve(async (req) => {
       throw new Error("Invalid user");
     }
 
-    const input: LawInput = await req.json();
+    const input: LawInput & { law_blocks?: LawBlockInput[] } = await req.json();
     console.log("Creating law:", input);
 
     // Validate required fields
     if (!input.name || !input.legal_level || !input.category) {
       throw new Error("Nome, nível legal e categoria são obrigatórios");
+    }
+
+    // Puzzle: required block count by level
+    const requiredBlocksByLevel: Record<LawInput['legal_level'], number> = {
+      planetary: 3,
+      bloc: 2,
+      national: 1,
+    };
+
+    // If using LawBlocks, validate puzzle rules
+    const puzzleNotes: any[] = [];
+    let aggregatedPositive: string[] = input.positive_effects || [];
+    let aggregatedNegative: string[] = input.negative_effects || [];
+    let aggregatedTags: string[] = [];
+    let ruralBiasSum = 0;
+    let urbanBiasSum = 0;
+    let synergyScore = 0;
+    let contradictionsCount = 0;
+
+    if (input.law_blocks && input.law_blocks.length > 0) {
+      const blocks = input.law_blocks;
+
+      // Required block count
+      const required = requiredBlocksByLevel[input.legal_level];
+      if (blocks.length < required) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `Este nível legal exige ao menos ${required} bloco(s)`,
+            code: 'PUZZLE_BLOCKS_MISSING',
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+
+      // Aggregate effects, tags, biases
+      aggregatedPositive = [];
+      aggregatedNegative = [];
+      aggregatedTags = [];
+      ruralBiasSum = 0;
+      urbanBiasSum = 0;
+
+      for (const b of blocks) {
+        aggregatedPositive.push(...(b.positive_effects || []));
+        aggregatedNegative.push(...(b.negative_effects || []));
+        aggregatedTags.push(...(b.tags || []));
+        ruralBiasSum += b.rural_bias || 0;
+        urbanBiasSum += b.urban_bias || 0;
+      }
+
+      // Must have at least one negative trade-off
+      if ((aggregatedNegative?.length || 0) < 1) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "A lei precisa conter ao menos um trade-off negativo total",
+            code: 'PUZZLE_NO_NEGATIVE',
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+
+      // Synergy and contradictions
+      const { synergy, contradictions } = computeSynergyAndContradictions(blocks);
+      synergyScore = synergy;
+      contradictionsCount = contradictions;
+
+      // Hierarchical adherence penalties
+      if (input.legal_level === 'planetary') {
+        const badTier = blocks.filter(b => b.tier !== 'planet').length;
+        if (badTier > 0) {
+          puzzleNotes.push({ type: 'tier_penalty', level: 'planetary', penalty_blocks: badTier, note: 'Blocos não planetários em lei planetária' });
+        }
+      } else if (input.legal_level === 'bloc') {
+        const countryTierBlocks = blocks.filter(b => b.tier === 'country').length;
+        if (countryTierBlocks > 0) {
+          puzzleNotes.push({ type: 'tier_penalty', level: 'bloc', penalty_blocks: countryTierBlocks, note: 'Blocos nacionais em lei de bloco' });
+        }
+      } else {
+        // national: prefer coherence, punish strong contradictions
+        if (contradictionsCount >= 2) {
+          puzzleNotes.push({ type: 'contradictions_penalty', level: 'national', count: contradictionsCount, note: 'Contradições fortes punem apoio' });
+        }
+      }
     }
 
     // Validate ownership
@@ -249,39 +376,112 @@ serve(async (req) => {
       territoryBlocId = membership?.bloc_id || null;
     }
 
-    // Check for legal conflicts
+    // Check for legal conflicts with superior laws
     const { hasConflict, conflicts } = await checkLegalConflicts(
       supabase,
       input.legal_level,
       input.bloc_id || territoryBlocId,
-      input.positive_effects || [],
-      input.negative_effects || [],
+      aggregatedPositive || [],
+      aggregatedNegative || [],
       input.category
     );
 
+    // Conflict policy:
+    // Planetary: deny activation
+    // Bloc/National: annul conflicting effects and apply penalty
     if (hasConflict) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Lei viola leis superiores",
-          conflicts
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+      if (input.legal_level === 'planetary') {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Lei planetária viola leis superiores",
+            conflicts
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      } else {
+        // Annul conflicting effects (remove matched effect strings) and apply penalties
+        const effectPairs: { effect: string; lawEffect: string }[] = [];
+        for (const c of conflicts) {
+          if (c.reason && typeof c.reason === 'string') {
+            const m = c.reason.match(/"(.+)" vs "(.+)"/);
+            if (m && m[1] && m[2]) {
+              effectPairs.push({ effect: m[1].toLowerCase(), lawEffect: m[2].toLowerCase() });
+            }
+          }
+        }
+        if (effectPairs.length > 0) {
+          const lowerPos = (aggregatedPositive || []).map(e => e.toLowerCase());
+          const lowerNeg = (aggregatedNegative || []).map(e => e.toLowerCase());
+
+          aggregatedPositive = aggregatedPositive.filter((e, i) => {
+            const le = lowerPos[i];
+            return !effectPairs.some(p => p.effect === le || p.lawEffect === le);
+          });
+
+          aggregatedNegative = aggregatedNegative.filter((e, i) => {
+            const le = lowerNeg[i];
+            return !effectPairs.some(p => p.effect === le || p.lawEffect === le);
+          });
+
+          puzzleNotes.push({ type: 'effects_annulled', count: effectPairs.length, note: 'Efeitos conflitantes anulados com base em leis superiores' });
+        }
+      }
     }
 
-    // Calculate sympathy and repulsion
+    // Calculate sympathy and repulsion (base)
     const { sympathy, repulsion } = calculateSympathyAndRepulsion(
-      input.positive_effects || [],
-      input.negative_effects || [],
+      aggregatedPositive || [],
+      aggregatedNegative || [],
       input.economic_impact || 0,
       input.social_impact || 0,
       input.territorial_impact || 0,
       input.military_impact || 0
     );
 
+    // Apply puzzle adjustments
+    let finalSympathy = sympathy;
+    let finalRepulsion = repulsion;
+
+    // Synergy increases sympathy slightly; contradictions increase repulsion
+    finalSympathy += synergyScore * 1.5;
+    finalRepulsion += contradictionsCount * 3;
+
+    // Tier penalties
+    if (input.law_blocks && input.law_blocks.length > 0) {
+      if (input.legal_level === 'planetary') {
+        const badTier = input.law_blocks.filter(b => b.tier !== 'planet').length;
+        finalRepulsion += badTier * 5;
+        finalSympathy -= badTier * 2;
+      } else if (input.legal_level === 'bloc') {
+        const countryTier = input.law_blocks.filter(b => b.tier === 'country').length;
+        finalRepulsion += countryTier * 4;
+        finalSympathy -= countryTier * 2;
+      }
+    }
+
+    // If conflicts were annulled (bloc/national), apply penalty
+    if (hasConflict && input.legal_level !== 'planetary') {
+      finalRepulsion += 15;
+      finalSympathy -= 10;
+    }
+
+    // Rural/urban popularity preview based on biases + synergy/contradictions
+    let ruralPopularity = finalSympathy;
+    let urbanPopularity = finalSympathy;
+    if (input.law_blocks && input.law_blocks.length > 0) {
+      ruralPopularity = clamp(finalSympathy + ruralBiasSum + (synergyScore * 0.5) - (contradictionsCount * 2));
+      urbanPopularity = clamp(finalSympathy + urbanBiasSum + (synergyScore * 0.5) - (contradictionsCount * 2));
+    } else {
+      ruralPopularity = clamp(finalSympathy);
+      urbanPopularity = clamp(finalSympathy);
+    }
+
+    const clampedSympathy = clamp(finalSympathy);
+    const clampedRepulsion = clamp(finalRepulsion);
+
     // Create the law
-    const lawData = {
+    const lawData: any = {
       name: input.name,
       legal_level: input.legal_level,
       category: input.category,
@@ -290,17 +490,25 @@ serve(async (req) => {
       bloc_id: input.bloc_id,
       territory_id: input.territory_id,
       proposed_by: user.id,
-      positive_effects: input.positive_effects || [],
-      negative_effects: input.negative_effects || [],
+      positive_effects: aggregatedPositive || [],
+      negative_effects: aggregatedNegative || [],
       economic_impact: input.economic_impact || 0,
       social_impact: input.social_impact || 0,
       territorial_impact: input.territorial_impact || 0,
       military_impact: input.military_impact || 0,
-      population_sympathy: sympathy,
-      population_repulsion: repulsion,
+      population_sympathy: clampedSympathy,
+      population_repulsion: clampedRepulsion,
       legal_conflicts: conflicts.length > 0 ? conflicts : [],
       status: input.enact_immediately && input.legal_level === 'national' ? 'enacted' : 'proposed',
-      enacted_at: input.enact_immediately && input.legal_level === 'national' ? new Date().toISOString() : null
+      enacted_at: input.enact_immediately && input.legal_level === 'national' ? new Date().toISOString() : null,
+      // puzzle fields
+      synergy_score: synergyScore,
+      rural_popularity: ruralPopularity,
+      urban_popularity: urbanPopularity,
+      tags: (input.law_blocks && input.law_blocks.length > 0) ? aggregatedTags : [],
+      blocks: (input.law_blocks && input.law_blocks.length > 0) ? input.law_blocks : null,
+      puzzle_valid: true,
+      puzzle_notes: puzzleNotes,
     };
 
     const { data: newLaw, error: lawError } = await supabase
@@ -319,7 +527,8 @@ serve(async (req) => {
       .from('legal_history')
       .insert({
         law_id: newLaw.id,
-        action: input.enact_immediately && input.legal_level === 'national' ? 'enacted' : 'proposed',
+        action: input.enact_immediately && input.legal_level === 'national' 
+          ? 'enacted' : 'proposed',
         description: input.enact_immediately && input.legal_level === 'national' 
           ? `Decreto "${input.name}" promulgado por decreto real`
           : `Lei "${input.name}" proposta para votação`,
@@ -356,8 +565,11 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         law: newLaw,
-        sympathy,
-        repulsion,
+        sympathy: clampedSympathy,
+        repulsion: clampedRepulsion,
+        ruralPopularity,
+        urbanPopularity,
+        synergyScore,
         conflicts: conflicts.length > 0 ? conflicts : null
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

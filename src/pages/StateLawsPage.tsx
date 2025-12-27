@@ -37,6 +37,10 @@ interface Law {
   territorial_impact: number;
   military_impact: number;
   territory_id: string;
+  synergy_score?: number;
+  rural_popularity?: number;
+  urban_popularity?: number;
+  tags?: string[];
 }
 
 export default function StateLawsPage() {
@@ -275,6 +279,21 @@ export default function StateLawsPage() {
                         <p className={`font-bold ${law.military_impact >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {law.military_impact >= 0 ? '+' : ''}{law.military_impact}
                         </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="text-center p-2 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">Sinergia</p>
+                        <p className="font-bold">{law.synergy_score ?? 0}</p>
+                      </div>
+                      <div className="text-center p-2 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">Popularidade Rural</p>
+                        <p className="font-bold text-green-600">{law.rural_popularity ?? law.population_sympathy}%</p>
+                      </div>
+                      <div className="text-center p-2 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">Popularidade Urbana</p>
+                        <p className="font-bold text-purple-600">{law.urban_popularity ?? law.population_sympathy}%</p>
                       </div>
                     </div>
 
