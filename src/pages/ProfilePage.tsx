@@ -62,6 +62,20 @@ const levelColors: Record<string, string> = {
   power: 'bg-yellow-500',
 };
 
+// ADD: Explicit type for territories with nested aliases
+type MyTerritory = {
+  id: string;
+  name: string;
+  level: keyof typeof levelLabels;
+  government_type: string;
+  stability: number;
+  economy_rating: number;
+  pd_points: number;
+  pi_points: number;
+  region?: { name?: string } | null;
+  capital?: { name?: string } | null;
+};
+
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -118,18 +132,19 @@ export default function ProfilePage() {
   });
 
   // Fetch territories
-  const { data: territories } = useQuery({
+  const { data: territories } = useQuery<MyTerritory[]>({
     queryKey: ['user-territories', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('territories')
-        .select(`*
+        .select(`
+          id, name, level, government_type, stability, economy_rating, pd_points, pi_points,
           region:regions(name),
           capital:cities!territories_capital_city_id_fkey(name)
         `)
         .eq('owner_id', user.id);
-      return data || [];
+      return (data || []) as MyTerritory[];
     },
     enabled: !!user,
   });
