@@ -8,13 +8,14 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, MapPin, Building2, Coins, TreePine, Home, Filter, Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, MapPin, Building2, Coins } from 'lucide-react';
+import FiltersBar from "@/components/cell-map/FiltersBar";
+import CellsGrid from "@/components/cell-map/CellsGrid";
+import CellsList from "@/components/cell-map/CellsList";
+import ColonizeDialog from "@/components/cell-map/ColonizeDialog";
+import FoundCityDialog from "@/components/cell-map/FoundCityDialog";
 
 interface Cell {
   id: string;
@@ -40,17 +41,18 @@ export default function CellMapPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
+  // Filters state
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [regionFilter, setRegionFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [urbanOnlyFilter, setUrbanOnlyFilter] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
+  // UI state
   const [selectedCell, setSelectedCell] = useState<Cell | null>(null);
   const [colonizeDialogOpen, setColonizeDialogOpen] = useState(false);
   const [foundCityDialogOpen, setFoundCityDialogOpen] = useState(false);
-  const [cityName, setCityName] = useState('');
   const [useToken, setUseToken] = useState(true);
   const [selectedTerritoryId, setSelectedTerritoryId] = useState<string>('');
 
@@ -144,7 +146,7 @@ export default function CellMapPage() {
     enabled: !!user?.id,
   });
 
-  // Colonize mutation
+  // Mutations
   const colonizeMutation = useMutation({
     mutationFn: async ({ cellId, territoryId, useToken }: { cellId: string; territoryId: string; useToken: boolean }) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -171,7 +173,6 @@ export default function CellMapPage() {
     },
   });
 
-  // Found city mutation
   const foundCityMutation = useMutation({
     mutationFn: async ({ cellId, territoryId, cityName }: { cellId: string; territoryId: string; cityName: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -191,48 +192,14 @@ export default function CellMapPage() {
       queryClient.invalidateQueries({ queryKey: ['user-tokens'] });
       setFoundCityDialogOpen(false);
       setSelectedCell(null);
-      setCityName('');
     },
     onError: (error: Error) => {
       toast({ title: 'Erro ao fundar cidade', description: error.message, variant: 'destructive' });
     },
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'blocked':
-        return <Badge variant="secondary" className="bg-muted/50">Bloqueada</Badge>;
-      case 'explored':
-        return <Badge className="bg-status-warning/20 text-status-warning">Explorada</Badge>;
-      case 'colonized':
-        return <Badge className="bg-status-success/20 text-status-success">Colonizada</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const getTypeBadge = (type: string, isUrbanEligible: boolean) => {
-    if (type === 'urban') {
-      return <Badge className="bg-primary/20 text-primary"><Building2 className="h-3 w-3 mr-1" />Urbana</Badge>;
-    }
-    if (isUrbanEligible) {
-      return <Badge className="bg-accent/20 text-accent-foreground"><Home className="h-3 w-3 mr-1" />Urbanizável</Badge>;
-    }
-    return <Badge variant="outline"><TreePine className="h-3 w-3 mr-1" />Rural</Badge>;
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'text-status-success';
-      case 'medium': return 'text-status-warning';
-      case 'hard': return 'text-orange-500';
-      case 'extreme': return 'text-status-danger';
-      case 'anomaly': return 'text-purple-500';
-      default: return 'text-muted-foreground';
-    }
-  };
-
-  const filteredCells = cells?.filter(cell => {
+  // Derived helpers
+  const filteredCells = (cells || []).filter((cell) => {
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       const regionName = (cell.regions as { name: string } | null)?.name?.toLowerCase() || '';
@@ -242,16 +209,14 @@ export default function CellMapPage() {
     return true;
   });
 
-  const canColonize = (cell: Cell) => {
-    return cell.status === 'explored' && !cell.owner_territory_id && user && userTerritories && userTerritories.length > 0;
-  };
+  const canColonize = (cell: Cell) =>
+    cell.status === 'explored' && !cell.owner_territory_id && user && userTerritories && userTerritories.length > 0;
 
-  const canFoundCity = (cell: Cell) => {
-    return cell.status === 'colonized' && 
-           cell.is_urban_eligible && 
-           !cell.has_city && 
-           userTerritories?.some(t => t.id === cell.owner_territory_id);
-  };
+  const canFoundCity = (cell: Cell) =>
+    cell.status === 'colonized' &&
+    cell.is_urban_eligible &&
+    !cell.has_city &&
+    userTerritories?.some((t) => t.id === cell.owner_territory_id);
 
   const openColonizeDialog = (cell: Cell) => {
     setSelectedCell(cell);
@@ -270,14 +235,13 @@ export default function CellMapPage() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 space-y-6">
+        {/* Header */}
         <div>
           <h1 className="text-3xl font-display font-bold text-glow">Mapa de Células</h1>
-          <p className="text-muted-foreground mt-1">
-            Explore, colonize e funde cidades nas células disponíveis
-          </p>
+          <p className="text-muted-foreground mt-1">Explore, colonize e funde cidades nas células disponíveis</p>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-card/50 border-border/50">
             <CardHeader className="pb-2">
@@ -315,83 +279,21 @@ export default function CellMapPage() {
         </div>
 
         {/* Filters */}
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Filtros
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div>
-                <Label>Buscar</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Região, território..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="explored">Exploradas</SelectItem>
-                    <SelectItem value="colonized">Colonizadas</SelectItem>
-                    <SelectItem value="blocked">Bloqueadas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Região</Label>
-                <Select value={regionFilter} onValueChange={setRegionFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {regions?.map(region => (
-                      <SelectItem key={region.id} value={region.id}>{region.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Tipo</Label>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="rural">Rural</SelectItem>
-                    <SelectItem value="urban">Urbana</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button
-                  variant={urbanOnlyFilter ? 'default' : 'outline'}
-                  onClick={() => setUrbanOnlyFilter(!urbanOnlyFilter)}
-                  className="w-full"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  Só Urbanizáveis
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <FiltersBar
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          regionFilter={regionFilter}
+          onRegionFilterChange={setRegionFilter}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          urbanOnlyFilter={urbanOnlyFilter}
+          onToggleUrbanOnly={() => setUrbanOnlyFilter(!urbanOnlyFilter)}
+          regions={regions || []}
+        />
 
-        {/* Cells Grid */}
+        {/* Grid/List */}
         <Tabs defaultValue="grid" className="w-full">
           <TabsList>
             <TabsTrigger value="grid">Grade</TabsTrigger>
@@ -399,302 +301,68 @@ export default function CellMapPage() {
           </TabsList>
 
           <TabsContent value="grid" className="mt-4">
-            {cellsLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : filteredCells && filteredCells.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredCells.map(cell => (
-                  <Card key={cell.id} className="bg-card/50 border-border/50 hover:border-primary/50 transition-colors">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        {getStatusBadge(cell.status)}
-                        {getTypeBadge(cell.cell_type, cell.is_urban_eligible)}
-                      </div>
-                      <CardDescription className="text-xs font-mono mt-2">
-                        {cell.id.slice(0, 8)}...
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Região:</span>
-                          <span className={getDifficultyColor((cell.regions as { difficulty: string } | null)?.difficulty || '')}>
-                            {(cell.regions as { name: string } | null)?.name || 'Desconhecida'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Área:</span>
-                          <span>{cell.area_km2.toLocaleString()} km²</span>
-                        </div>
-                        {cell.colonization_cost > 0 && cell.status === 'explored' && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Custo:</span>
-                            <span className="text-status-warning">{cell.colonization_cost.toLocaleString()}</span>
-                          </div>
-                        )}
-                        {(cell.territories as { name: string } | null)?.name && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Dono:</span>
-                            <span className="text-primary">{(cell.territories as { name: string }).name}</span>
-                          </div>
-                        )}
-                        {cell.has_city && (cell.cities as { name: string } | null)?.name && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Cidade:</span>
-                            <span className="text-accent">{(cell.cities as { name: string }).name}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 pt-2">
-                        {canColonize(cell) && (
-                          <Button
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => openColonizeDialog(cell)}
-                          >
-                            <MapPin className="h-3 w-3 mr-1" />
-                            Colonizar
-                          </Button>
-                        )}
-                        {canFoundCity(cell) && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="flex-1"
-                            onClick={() => openFoundCityDialog(cell)}
-                          >
-                            <Building2 className="h-3 w-3 mr-1" />
-                            Fundar Cidade
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma célula encontrada com os filtros selecionados</p>
-              </div>
-            )}
+            <CellsGrid
+              cells={filteredCells}
+              loading={cellsLoading}
+              canColonize={canColonize}
+              canFoundCity={canFoundCity}
+              onColonize={openColonizeDialog}
+              onFoundCity={openFoundCityDialog}
+            />
           </TabsContent>
 
           <TabsContent value="list" className="mt-4">
-            {cellsLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : filteredCells && filteredCells.length > 0 ? (
-              <div className="rounded-md border border-border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3">ID</th>
-                      <th className="text-left p-3">Região</th>
-                      <th className="text-left p-3">Status</th>
-                      <th className="text-left p-3">Tipo</th>
-                      <th className="text-left p-3">Área</th>
-                      <th className="text-left p-3">Dono</th>
-                      <th className="text-left p-3">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCells.map(cell => (
-                      <tr key={cell.id} className="border-t border-border hover:bg-muted/30">
-                        <td className="p-3 font-mono text-xs">{cell.id.slice(0, 8)}...</td>
-                        <td className="p-3">{(cell.regions as { name: string } | null)?.name || '-'}</td>
-                        <td className="p-3">{getStatusBadge(cell.status)}</td>
-                        <td className="p-3">{getTypeBadge(cell.cell_type, cell.is_urban_eligible)}</td>
-                        <td className="p-3">{cell.area_km2.toLocaleString()} km²</td>
-                        <td className="p-3">{(cell.territories as { name: string } | null)?.name || '-'}</td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            {canColonize(cell) && (
-                              <Button size="sm" variant="outline" onClick={() => openColonizeDialog(cell)}>
-                                Colonizar
-                              </Button>
-                            )}
-                            {canFoundCity(cell) && (
-                              <Button size="sm" variant="outline" onClick={() => openFoundCityDialog(cell)}>
-                                Fundar
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                Nenhuma célula encontrada
-              </div>
-            )}
+            <CellsList
+              cells={filteredCells}
+              loading={cellsLoading}
+              canColonize={canColonize}
+              canFoundCity={canFoundCity}
+              onColonize={openColonizeDialog}
+              onFoundCity={openFoundCityDialog}
+            />
           </TabsContent>
         </Tabs>
 
         {/* Colonize Dialog */}
-        <Dialog open={colonizeDialogOpen} onOpenChange={setColonizeDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Colonizar Célula</DialogTitle>
-              <DialogDescription>
-                Escolha como deseja pagar pela colonização desta célula.
-              </DialogDescription>
-            </DialogHeader>
-            
-            {selectedCell && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-muted/30 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Região:</span>
-                    <span>{(selectedCell.regions as { name: string } | null)?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Área:</span>
-                    <span>{selectedCell.area_km2.toLocaleString()} km²</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Urbanizável:</span>
-                    <span>{selectedCell.is_urban_eligible ? 'Sim' : 'Não'}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Território</Label>
-                  <Select value={selectedTerritoryId} onValueChange={setSelectedTerritoryId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um território" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userTerritories?.map(territory => (
-                        <SelectItem key={territory.id} value={territory.id}>{territory.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Método de Pagamento</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Button
-                      variant={useToken ? 'default' : 'outline'}
-                      onClick={() => setUseToken(true)}
-                      className="justify-start"
-                    >
-                      <MapPin className="h-4 w-4 mr-2" />
-                      1 Token de Terra
-                      <span className="ml-auto text-xs opacity-70">({userTokens?.land_tokens || 0})</span>
-                    </Button>
-                    <Button
-                      variant={!useToken ? 'default' : 'outline'}
-                      onClick={() => setUseToken(false)}
-                      className="justify-start"
-                    >
-                      <Coins className="h-4 w-4 mr-2" />
-                      {((selectedCell.colonization_cost || 0) + 500).toLocaleString()}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setColonizeDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedCell && selectedTerritoryId) {
-                    colonizeMutation.mutate({
-                      cellId: selectedCell.id,
-                      territoryId: selectedTerritoryId,
-                      useToken,
-                    });
-                  }
-                }}
-                disabled={colonizeMutation.isPending || !selectedTerritoryId}
-              >
-                {colonizeMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <MapPin className="h-4 w-4 mr-2" />
-                )}
-                Colonizar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ColonizeDialog
+          open={colonizeDialogOpen}
+          onOpenChange={setColonizeDialogOpen}
+          selectedCell={selectedCell}
+          userTerritories={userTerritories || []}
+          selectedTerritoryId={selectedTerritoryId}
+          onSelectedTerritoryIdChange={setSelectedTerritoryId}
+          useToken={useToken}
+          onUseTokenChange={setUseToken}
+          onConfirm={() => {
+            if (selectedCell && selectedTerritoryId) {
+              colonizeMutation.mutate({
+                cellId: selectedCell.id,
+                territoryId: selectedTerritoryId,
+                useToken,
+              });
+            }
+          }}
+          isPending={colonizeMutation.isPending}
+          userTokens={userTokens}
+        />
 
         {/* Found City Dialog */}
-        <Dialog open={foundCityDialogOpen} onOpenChange={setFoundCityDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Fundar Cidade</DialogTitle>
-              <DialogDescription>
-                Crie uma nova cidade nesta célula urbanizável. Custo: 1 Token de Cidade.
-              </DialogDescription>
-            </DialogHeader>
-            
-            {selectedCell && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-muted/30 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Região:</span>
-                    <span>{(selectedCell.regions as { name: string } | null)?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Seus Tokens de Cidade:</span>
-                    <span className={userTokens?.city_tokens && userTokens.city_tokens > 0 ? 'text-status-success' : 'text-status-danger'}>
-                      {userTokens?.city_tokens || 0}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="city-name">Nome da Cidade</Label>
-                  <Input
-                    id="city-name"
-                    value={cityName}
-                    onChange={(e) => setCityName(e.target.value)}
-                    placeholder="Digite o nome da cidade"
-                    maxLength={50}
-                  />
-                </div>
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setFoundCityDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedCell && cityName.trim()) {
-                    foundCityMutation.mutate({
-                      cellId: selectedCell.id,
-                      territoryId: selectedCell.owner_territory_id!,
-                      cityName: cityName.trim(),
-                    });
-                  }
-                }}
-                disabled={foundCityMutation.isPending || !cityName.trim() || (userTokens?.city_tokens || 0) < 1}
-              >
-                {foundCityMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Building2 className="h-4 w-4 mr-2" />
-                )}
-                Fundar Cidade
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <FoundCityDialog
+          open={foundCityDialogOpen}
+          onOpenChange={setFoundCityDialogOpen}
+          selectedCell={selectedCell}
+          userTokens={userTokens}
+          onConfirm={(name) => {
+            if (selectedCell && name.trim()) {
+              foundCityMutation.mutate({
+                cellId: selectedCell.id,
+                territoryId: selectedCell.owner_territory_id!,
+                cityName: name.trim(),
+              });
+            }
+          }}
+          isPending={foundCityMutation.isPending}
+        />
       </div>
     </Layout>
   );
