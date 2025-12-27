@@ -18,7 +18,7 @@ type Filters = {
   owner: 'all' | 'free' | 'owned';
   fertMin: number;
   fertMax: number;
-  resource capacity thresholds
+  // resource capacity thresholds
   minFood?: number;
   minEnergy?: number;
   minMinerals?: number;
