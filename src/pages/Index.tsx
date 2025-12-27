@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
-import { Globe, Crown, Map, Store, Gavel, Users, Activity } from "lucide-react";
+import { Globe, Crown, Map, Store, Gavel, Users, Activity, Box } from "lucide-react";
 
 export default function Index() {
   const { user, isAdmin } = useAuth();
@@ -196,6 +196,21 @@ export default function Index() {
             <CardContent>
               <Link to="/mercado">
                 <Button className="w-full">Abrir Mercado</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Box className="h-5 w-5 text-primary" />
+                Armazém
+              </CardTitle>
+              <CardDescription>Estoque, capacidade e recursos armazenados</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link to="/armazem">
+                <Button className="w-full">Abrir Armazém</Button>
               </Link>
             </CardContent>
           </Card>

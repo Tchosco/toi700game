@@ -11,6 +11,8 @@ export default function DiagnosticoPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [errorDetail, setErrorDetail] = useState<string>('');
+  const [cellsCount, setCellsCount] = useState<number | null>(null);
+  const [regionsCount, setRegionsCount] = useState<number | null>(null);
 
   const envUrl =
     (import.meta as any).env?.VITE_SUPABASE_URL ||
@@ -25,6 +27,8 @@ export default function DiagnosticoPage() {
     setLoading(true);
     setResult('');
     setErrorDetail('');
+    setCellsCount(null);
+    setRegionsCount(null);
 
     // Consulta a planet_config (como pedido). Se a tabela não existir, um erro detalhado será exibido.
     const { data, error } = await (supabase as any)
@@ -46,6 +50,18 @@ export default function DiagnosticoPage() {
     } else {
       setResult(JSON.stringify(data, null, 2));
     }
+
+    // ADD: counts for cells and regions
+    const { count: cCount } = await (supabase as any)
+      .from('cells')
+      .select('id', { count: 'exact', head: true });
+
+    const { count: rCount } = await (supabase as any)
+      .from('regions')
+      .select('id', { count: 'exact', head: true });
+
+    setCellsCount(typeof cCount === 'number' ? cCount : null);
+    setRegionsCount(typeof rCount === 'number' ? rCount : null);
 
     setLoading(false);
   };
@@ -109,6 +125,17 @@ export default function DiagnosticoPage() {
                 'Testar conexão'
               )}
             </Button>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              <div className="p-3 rounded bg-muted/50">
+                <p className="text-xs text-muted-foreground">Cells (total)</p>
+                <p className="font-bold">{cellsCount ?? '...'}</p>
+              </div>
+              <div className="p-3 rounded bg-muted/50">
+                <p className="text-xs text-muted-foreground">Regions (total)</p>
+                <p className="font-bold">{regionsCount ?? '...'}</p>
+              </div>
+            </div>
 
             {result && (
               <div className="p-3 rounded border bg-muted/30">

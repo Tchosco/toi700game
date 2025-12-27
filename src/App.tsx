@@ -58,6 +58,7 @@ import InfrastructureNationalPage from "./pages/InfrastructureNationalPage";
 import InfrastructureCellPage from "./pages/InfrastructureCellPage";
 import ConstructionQueuePage from "./pages/ConstructionQueuePage";
 import DiagnosticoPage from "./pages/DiagnosticoPage";
+import WarehousePage from "./pages/WarehousePage";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,7 @@ const App = () => (
             <Route path="/salas-diplomaticas" element={<PrivateRoomsPage />} />
             <Route path="/historico-diplomatico" element={<DiplomaticHistoryPage />} />
             <Route path="/diagnostico" element={<DiagnosticoPage />} />
+            <Route path="/armazem" element={<WarehousePage />} />
             <Route path="/conquistas" element={<AchievementsPage />} />
             <Route path="/missoes" element={<MissionsPage />} />
             <Route path="/tecnologia" element={<TechTreePage />} />
