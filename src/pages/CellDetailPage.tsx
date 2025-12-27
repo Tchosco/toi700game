@@ -1,25 +1,27 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { Layout } from '@/components/layout/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, MapPin, TreePine, Building2, Zap, Pickaxe, Wheat, FlaskConical, Factory, ShoppingCart } from 'lucide-react';
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Layout } from "@/components/layout/Layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, ArrowLeft, MapPin, TreePine, Building2, Zap, Pickaxe, Wheat, FlaskConical, Factory, ShoppingCart } from "lucide-react";
 
 const RURAL_FOCUSES = [
-  { value: 'agricultural', label: 'Agrícola', icon: Wheat, description: '+30% alimentos', color: 'text-green-500' },
-  { value: 'mineral', label: 'Mineral', icon: Pickaxe, description: '+30% minerais', color: 'text-amber-500' },
-  { value: 'energy', label: 'Energética', icon: Zap, description: '+30% energia', color: 'text-yellow-500' },
+  { value: "agricultural", label: "Agrícola", icon: Wheat, description: "+30% alimentos", color: "text-green-500" },
+  { value: "mineral", label: "Mineral", icon: Pickaxe, description: "+30% minerais", color: "text-amber-500" },
+  { value: "energy", label: "Energética", icon: Zap, description: "+30% energia", color: "text-yellow-500" },
 ];
 
 const URBAN_FOCUSES = [
-  { value: 'industrial', label: 'Industrial', icon: Factory, description: '+30% produção', color: 'text-orange-500' },
-  { value: 'commercial', label: 'Comercial', icon: ShoppingCart, description: '+30% moeda', color: 'text-cyan-500' },
-  { value: 'scientific', label: 'Científico', icon: FlaskConical, description: '+30% pesquisa', color: 'text-purple-500' },
+  { value: "industrial", label: "Industrial", icon: Factory, description: "+30% produção", color: "text-orange-500" },
+  { value: "commercial", label: "Comercial", icon: ShoppingCart, description: "+30% moeda", color: "text-cyan-500" },
+  { value: "scientific", label: "Científico", icon: FlaskConical, description: "+30% pesquisa", color: "text-purple-500" },
 ];
 
 export default function CellDetailPage() {
@@ -29,16 +31,16 @@ export default function CellDetailPage() {
   const queryClient = useQueryClient();
 
   const { data: cell, isLoading } = useQuery({
-    queryKey: ['cell-detail', id],
+    queryKey: ["cell-detail", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('cells')
+        .from("cells")
         .select(`
           *,
           regions(name, difficulty),
           territories:owner_territory_id(id, name, owner_id)
         `)
-        .eq('id', id)
+        .eq("id", id)
         .single();
       if (error) throw error;
       return data;
@@ -47,12 +49,12 @@ export default function CellDetailPage() {
   });
 
   const { data: cities } = useQuery({
-    queryKey: ['cell-cities', id],
+    queryKey: ["cell-cities", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('cities')
-        .select('*')
-        .eq('cell_id', id);
+        .from("cities")
+        .select("*")
+        .eq("cell_id", id);
       if (error) throw error;
       return data;
     },
@@ -60,23 +62,23 @@ export default function CellDetailPage() {
   });
 
   const changeFocusMutation = useMutation({
-    mutationFn: async ({ focus, type }: { focus: string; type: 'rural' | 'urban' }) => {
-      const updateData = type === 'rural' 
-        ? { rural_focus: focus, focus_changed_at: new Date().toISOString(), focus_penalty_until: new Date(Date.now() + 24*60*60*1000).toISOString() }
-        : { urban_focus: focus, focus_changed_at: new Date().toISOString(), focus_penalty_until: new Date(Date.now() + 24*60*60*1000).toISOString() };
-      
+    mutationFn: async ({ focus, type }: { focus: string; type: "rural" | "urban" }) => {
+      const updateData = type === "rural"
+        ? { rural_focus: focus, focus_changed_at: new Date().toISOString(), focus_penalty_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
+        : { urban_focus: focus, focus_changed_at: new Date().toISOString(), focus_penalty_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() };
+
       const { error } = await supabase
-        .from('cells')
+        .from("cells")
         .update(updateData as any)
-        .eq('id', id);
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Foco alterado!', description: 'Penalidade temporária de estabilidade aplicada por 24h.' });
-      queryClient.invalidateQueries({ queryKey: ['cell-detail', id] });
+      toast({ title: "Foco alterado!", description: "Penalidade temporária de estabilidade aplicada por 24h." });
+      queryClient.invalidateQueries({ queryKey: ["cell-detail", id] });
     },
     onError: (error: Error) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     },
   });
 
@@ -108,7 +110,7 @@ export default function CellDetailPage() {
 
   const isOwner = cell.territories && (cell.territories as any).owner_id === user?.id;
   const hasPenalty = cell.focus_penalty_until && new Date(cell.focus_penalty_until) > new Date();
-  const isUrban = cell.cell_type === 'urban';
+  const isUrban = cell.cell_type === "urban";
   const focuses = isUrban ? URBAN_FOCUSES : RURAL_FOCUSES;
   const currentFocus = isUrban ? (cell as any).urban_focus : (cell as any).rural_focus;
 
@@ -262,8 +264,8 @@ export default function CellDetailPage() {
                     disabled={!isOwner || changeFocusMutation.isPending}
                     onClick={() => changeFocusMutation.mutate({ focus: focus.value, type: isUrban ? 'urban' : 'rural' })}
                     className={`p-4 rounded-lg border text-left transition-all ${
-                      isActive 
-                        ? 'border-primary bg-primary/10' 
+                      isActive
+                        ? 'border-primary bg-primary/10'
                         : 'border-border/50 hover:border-primary/50'
                     } ${!isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >

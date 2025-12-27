@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -122,8 +124,7 @@ export default function ProfilePage() {
       if (!user) return [];
       const { data } = await supabase
         .from('territories')
-        .select(`
-          *,
+        .select(`*
           region:regions(name),
           capital:cities!territories_capital_city_id_fkey(name)
         `)
