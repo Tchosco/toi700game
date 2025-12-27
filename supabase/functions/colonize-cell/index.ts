@@ -145,13 +145,31 @@ Deno.serve(async (req) => {
     }
 
     // 6. Deduct token_land
-    const { data: deductToken, error: deductTokenErr } = await supabase.rpc('atomic_deduct_token', {
-      p_user_id: user.id,
-      p_token_type: 'land',
-      p_amount: costTokenLand
-    });
-    if (deductTokenErr || !deductToken?.success) {
-      return new Response(JSON.stringify({ success: false, error: 'Tokens de terra insuficientes' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+    // Preferir token_balances do Estado
+    const { data: stateTokens } = await (supabase as any)
+      .from('token_balances')
+      .select('token_land')
+      .eq('state_id', territory_id)
+      .maybeSingle();
+
+    if (stateTokens && typeof stateTokens.token_land === 'number') {
+      if (stateTokens.token_land < costTokenLand) {
+        return new Response(JSON.stringify({ success: false, error: 'Tokens de terra insuficientes no Estado' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+      await (supabase as any)
+        .from('token_balances')
+        .update({ token_land: stateTokens.token_land - costTokenLand })
+        .eq('state_id', territory_id);
+    } else {
+      // Fallback: tokens do usuário
+      const { data: deductToken, error: deductTokenErr } = await supabase.rpc('atomic_deduct_token', {
+        p_user_id: user.id,
+        p_token_type: 'land',
+        p_amount: costTokenLand
+      });
+      if (deductTokenErr || !deductToken?.success) {
+        return new Response(JSON.stringify({ success: false, error: 'Tokens de terra insuficientes' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
     }
 
     // 7. Deduct resources from warehouse

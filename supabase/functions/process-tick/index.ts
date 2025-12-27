@@ -776,13 +776,356 @@ async function processTerritoryTick(
   };
 }
 
+// Transferências atômicas de mercado (usa RPCs existentes)
+async function processMarket(supabase: Supa) {
+  // Coleta ordens abertas
+  const { data: sellOrders } = await supabase
+    .from('market_listings')
+    .select('*')
+    .eq('listing_type', 'sell')
+    .in('status', ['open', 'partially_filled']);
+
+  const { data: buyOrders } = await supabase
+    .from('market_listings')
+    .select('*')
+    .eq('listing_type', 'buy')
+    .in('status', ['open', 'partially_filled']);
+
+  if (!sellOrders || !buyOrders) return 0;
+
+  // Ordena: sellers por preço crescente, buyers por preço decrescente
+  const sells = [...sellOrders].sort((a: any, b: any) => a.price_per_unit - b.price_per_unit);
+  const buys = [...buyOrders].sort((a: any, b: any) => b.price_per_unit - a.price_per_unit);
+
+  let tradesExecuted = 0;
+
+  for (const buy of buys) {
+    const remainingBuy = Number(buy.quantity) - Number(buy.filled_quantity || 0);
+    if (remainingBuy <= 0) continue;
+
+    for (const sell of sells) {
+      const remainingSell = Number(sell.quantity) - Number(sell.filled_quantity || 0);
+      if (remainingSell <= 0) continue;
+      if (sell.resource_type !== buy.resource_type) continue;
+      if (sell.price_per_unit > buy.price_per_unit) continue;
+
+      const matchQty = Math.min(remainingBuy, remainingSell);
+      if (matchQty <= 0) continue;
+
+      const price = sell.price_per_unit; // executa ao preço do vendedor
+      const totalCost = Math.round(matchQty * price);
+
+      // Verifica saldos (comprador: wallet; vendedor: warehouse ou tokens)
+      const { data: buyerWallet } = await supabase
+        .from('player_wallets')
+        .select('balance')
+        .eq('user_id', buy.seller_user_id) // buyer_user_id
+        .maybeSingle();
+
+      if (!buyerWallet || Number(buyerWallet.balance) < totalCost) {
+        continue; // comprador sem saldo
+      }
+
+      const isToken = (sell.resource_type || '').startsWith('token_');
+      let sellerHas = true;
+
+      if (!isToken) {
+        if (!sell.seller_territory_id) continue;
+        const { data: rb } = await supabase
+          .from('resource_balances')
+          .select('food, energy, minerals, tech')
+          .eq('territory_id', sell.seller_territory_id)
+          .maybeSingle();
+        const field = sell.resource_type as 'food' | 'energy' | 'minerals' | 'tech';
+        const available = rb ? Number(rb[field] || 0) : 0;
+        if (available < matchQty) {
+          sellerHas = false;
+        }
+      } else {
+        // Tokens: usa atomic_transfer_tokens (sem verificar manualmente, RPC cuidará)
+      }
+
+      if (!sellerHas) continue;
+
+      // Transferências atômicas
+      if (isToken) {
+        const tokenType = sell.resource_type.replace('token_', '');
+        const { error: tokErr } = await supabase.rpc('atomic_transfer_tokens', {
+          p_from_user_id: sell.seller_user_id,
+          p_to_user_id: buy.seller_user_id,
+          p_city_tokens: tokenType === 'city' ? matchQty : 0,
+          p_land_tokens: tokenType === 'land' ? matchQty : 0,
+          p_state_tokens: tokenType === 'state' ? matchQty : 0,
+        });
+        if (tokErr) continue;
+      } else {
+        const { error: resErr } = await supabase.rpc('atomic_transfer_resources', {
+          p_from_territory_id: sell.seller_territory_id!,
+          p_to_territory_id: buy.seller_territory_id || null, // pode ser null; se for, não transfere (buyer não informou). Ideal: exigir territory_id em ordens de recurso.
+          p_food: sell.resource_type === 'food' ? matchQty : 0,
+          p_energy: sell.resource_type === 'energy' ? matchQty : 0,
+          p_minerals: sell.resource_type === 'minerals' ? matchQty : 0,
+          p_tech: sell.resource_type === 'tech' ? matchQty : 0,
+        });
+        if (resErr) continue;
+      }
+
+      const { error: curErr } = await supabase.rpc('atomic_transfer_currency', {
+        p_amount: totalCost,
+        p_from_user_id: buy.seller_user_id, // buyer
+        p_to_user_id: sell.seller_user_id, // seller
+      });
+      if (curErr) continue;
+
+      // Atualiza ordens
+      const newSellFilled = Number(sell.filled_quantity || 0) + matchQty;
+      const newBuyFilled = Number(buy.filled_quantity || 0) + matchQty;
+
+      await supabase
+        .from('market_listings')
+        .update({
+          filled_quantity: newSellFilled,
+          status: newSellFilled >= Number(sell.quantity) ? 'filled' : 'partially_filled',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sell.id);
+
+      await supabase
+        .from('market_listings')
+        .update({
+          filled_quantity: newBuyFilled,
+          status: newBuyFilled >= Number(buy.quantity) ? 'filled' : 'partially_filled',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', buy.id);
+
+      // Trade history
+      await supabase
+        .from('trade_history')
+        .insert({
+          resource_type: sell.resource_type,
+          quantity: matchQty,
+          price_per_unit: price,
+          total_price: totalCost,
+          buyer_user_id: buy.seller_user_id,
+          seller_user_id: sell.seller_user_id,
+          listing_id: sell.id,
+        });
+
+      // Event log para trades grandes
+      if (totalCost >= 10000) {
+        await supabase.from('event_logs').insert({
+          event_type: 'global',
+          title: 'Trade de Grande Porte',
+          description: `Negociados ${matchQty} ${sell.resource_type} por ₮${totalCost.toLocaleString()}`,
+        });
+      }
+
+      tradesExecuted += 1;
+      // Atualiza remainingBuy para parar se preenchido
+      if (newBuyFilled >= Number(buy.quantity)) break;
+    }
+  }
+
+  return tradesExecuted;
+}
+
+// Coleta efeitos de infraestrutura (multiplicadores)
+async function getInfrastructureModifiers(supabase: Supa, territory_id: string) {
+  // Nacionais
+  const { data: national } = await (supabase as any)
+    .from('infra_national')
+    .select('type_key, status, maintenance_active')
+    .eq('territory_id', territory_id)
+    .eq('status', 'active');
+
+  // Locais
+  const { data: local } = await (supabase as any)
+    .from('infra_cell')
+    .select('type_key, status, cell_id')
+    .eq('territory_id', territory_id)
+    .eq('status', 'active');
+
+  let foodMult = 1, energyMult = 1, mineralsMult = 1, techMult = 1;
+  let wasteReduction = 0, crisisPenaltyReduction = 0;
+
+  // Nacionais
+  for (const n of national || []) {
+    if (n.type_key === 'science_institute') techMult += 0.15;
+    if (n.type_key === 'logistics_net') wasteReduction += 0.5;
+    if (n.type_key === 'strategic_reserve') crisisPenaltyReduction += 0.3;
+    if (n.type_key === 'planning_agency') {
+      foodMult += 0.05; energyMult += 0.05; mineralsMult += 0.05; techMult += 0.05;
+    }
+  }
+
+  // Locais (cada infra ativa dá bonus por célula; agregado simples)
+  const localCounts = new Map<string, number>();
+  for (const l of local || []) {
+    localCounts.set(l.type_key, (localCounts.get(l.type_key) || 0) + 1);
+  }
+  foodMult += (localCounts.get('intensive_farm') || 0) * 0.02;
+  mineralsMult += (localCounts.get('mining_complex') || 0) * 0.02;
+  energyMult += (localCounts.get('power_plant') || 0) * 0.02;
+  techMult += (localCounts.get('industrial_park') || 0) * 0.015;
+
+  return { foodMult, energyMult, mineralsMult, techMult, wasteReduction: Math.min(0.8, wasteReduction), crisisPenaltyReduction: Math.min(0.5, crisisPenaltyReduction) };
+}
+
+// Manutenção de infraestrutura por tick (pausa se faltar saldo)
+async function processInfrastructureMaintenance(supabase: Supa) {
+  // Nacionais
+  const { data: nationals } = await (supabase as any)
+    .from('infra_national')
+    .select('id, territory_id, type_key, status, maintenance_active');
+
+  for (const n of nationals || []) {
+    if (n.status !== 'active') continue;
+
+    // Busca custos de manutenção do tipo
+    const { data: tdef } = await (supabase as any)
+      .from('national_infrastructure_types')
+      .select('maintenance_energy, maintenance_currency')
+      .eq('key', n.type_key)
+      .maybeSingle();
+
+    const mEnergy = tdef?.maintenance_energy ?? 5;
+    const mCurrency = tdef?.maintenance_currency ?? 10;
+
+    const { data: rb } = await supabase
+      .from('resource_balances')
+      .select('territory_id, energy')
+      .eq('territory_id', n.territory_id)
+      .maybeSingle();
+
+    const { data: terr } = await supabase
+      .from('territories')
+      .select('owner_id')
+      .eq('id', n.territory_id)
+      .maybeSingle();
+
+    const { data: profile } = terr?.owner_id
+      ? await supabase.from('profiles').select('currency').eq('id', terr.owner_id).maybeSingle()
+      : { data: null };
+
+    const hasEnergy = rb && Number(rb.energy) >= mEnergy;
+    const hasCurrency = profile && Number(profile.currency) >= mCurrency;
+
+    if (hasEnergy && hasCurrency) {
+      await supabase
+        .from('resource_balances')
+        .update({ energy: Number(rb!.energy) - mEnergy, updated_at: new Date().toISOString() })
+        .eq('territory_id', n.territory_id);
+      await supabase
+        .from('profiles')
+        .update({ currency: Number(profile!.currency) - mCurrency, updated_at: new Date().toISOString() })
+        .eq('id', terr!.owner_id!);
+    } else {
+      await (supabase as any)
+        .from('infra_national')
+        .update({ status: 'paused' })
+        .eq('id', n.id);
+      await supabase.from('event_logs').insert({
+        territory_id: n.territory_id,
+        event_type: 'global',
+        title: 'Infraestrutura Pausada',
+        description: `Manutenção insuficiente para ${n.type_key}`,
+      });
+    }
+  }
+
+  // Locais
+  const { data: locals } = await (supabase as any)
+    .from('infra_cell')
+    .select('id, territory_id, type_key, status');
+
+  for (const l of locals || []) {
+    if (l.status !== 'active') continue;
+
+    const { data: tdef } = await (supabase as any)
+      .from('cell_infrastructure_types')
+      .select('maintenance_energy, maintenance_currency')
+      .eq('key', l.type_key)
+      .maybeSingle();
+
+    const mEnergy = tdef?.maintenance_energy ?? 3;
+    const mCurrency = tdef?.maintenance_currency ?? 5;
+
+    const { data: rb } = await supabase
+      .from('resource_balances')
+      .select('territory_id, energy')
+      .eq('territory_id', l.territory_id)
+      .maybeSingle();
+
+    const { data: terr } = await supabase
+      .from('territories')
+      .select('owner_id')
+      .eq('id', l.territory_id)
+      .maybeSingle();
+
+    const { data: profile } = terr?.owner_id
+      ? await supabase.from('profiles').select('currency').eq('id', terr.owner_id).maybeSingle()
+      : { data: null };
+
+    const hasEnergy = rb && Number(rb.energy) >= mEnergy;
+    const hasCurrency = profile && Number(profile.currency) >= mCurrency;
+
+    if (hasEnergy && hasCurrency) {
+      await supabase
+        .from('resource_balances')
+        .update({ energy: Number(rb!.energy) - mEnergy, updated_at: new Date().toISOString() })
+        .eq('territory_id', l.territory_id);
+      await supabase
+        .from('profiles')
+        .update({ currency: Number(profile!.currency) - mCurrency, updated_at: new Date().toISOString() })
+        .eq('id', terr!.owner_id!);
+    } else {
+      await (supabase as any)
+        .from('infra_cell')
+        .update({ status: 'paused' })
+        .eq('id', l.id);
+      await supabase.from('event_logs').insert({
+        territory_id: l.territory_id,
+        event_type: 'global',
+        title: 'Infraestrutura Local Pausada',
+        description: `Manutenção insuficiente para ${l.type_key}`,
+      });
+    }
+  }
+}
+
+// Ajusta computação de produção com modificadores de infraestrutura
+function applyInfraModifiers(prod: { food: number; energy: number; minerals: number; tech: number }, mods: { foodMult: number; energyMult: number; mineralsMult: number; techMult: number }) {
+  return {
+    food: prod.food * mods.foodMult,
+    energy: prod.energy * mods.energyMult,
+    minerals: prod.minerals * mods.mineralsMult,
+    tech: prod.tech * mods.techMult,
+  };
+}
+
+// Ajusta descarte efetivo por overflow
+async function applyWarehouseCapacityWithInfra(supabase: Supa, territory_id: string, rb: any, food: number, energy: number, minerals: number, tech: number, wasteReduction: number) {
+  const base = await applyWarehouseCapacity(supabase, territory_id, rb, food, energy, minerals, tech);
+  const effectiveLost = Math.round((base.overflowLost || 0) * Math.max(0, 1 - (wasteReduction || 0)));
+  if (effectiveLost > 0) {
+    await supabase.from('event_logs').insert({
+      territory_id,
+      event_type: 'global',
+      title: 'Overflow Ajustado',
+      description: `Perda efetiva reduzida para ${effectiveLost} por rede logística`,
+      effects: { original_overflow: base.overflowLost || 0, effective_lost: effectiveLost },
+    });
+  }
+  return { ...base, overflowLost: effectiveLost };
+}
+
 // Orquestrador do tick (modular)
 async function runTick(req: Request) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Auth admin
   const auth = await authenticateAdmin(req, supabase);
   if (!auth.ok) {
     return {
@@ -791,38 +1134,103 @@ async function runTick(req: Request) {
     };
   }
 
-  // Config e próximo tick
   const { config, nextTickNumber, started_at } = await getConfigAndTick(supabase);
 
-  // Pré-processos
   await processConstructionQueue(supabase);
+  await processInfrastructureMaintenance(supabase);
 
-  // Leis ativas
   const lawsByTerritory = await loadEnactedLawsByTerritory(supabase);
 
-  // Carregar territórios
   const { data: territories } = await supabase
     .from('territories')
     .select('id, stability, level, vocation, pd_points, pi_points, capital_city_id');
 
-  // Loop por território
   let territoriesProcessed = 0;
   let citiesProcessed = 0;
   let eventsGenerated = 0;
-  const perStateSnapshots: TerritoryTickSnapshot[] = [];
+  const perStateSnapshots: any[] = [];
 
   for (const t of (territories || []) as Territory[]) {
-    const res = await processTerritoryTick(supabase, t, lawsByTerritory, nextTickNumber);
-    perStateSnapshots.push(res.snapshot);
-    citiesProcessed += res.citiesProcessedDelta;
-    eventsGenerated += res.eventsGeneratedDelta;
+    const territory_id = t.id;
+
+    const { cells, ruralPop, urbanPop, totalPop, cityCount } = await aggregateTerritory(supabase, territory_id);
+    citiesProcessed += cityCount;
+    await applyAggregatesToTerritory(supabase, territory_id, ruralPop, urbanPop, cells.length, cityCount);
+
+    const laws = lawsByTerritory.get(territory_id) || [];
+    const { prodFood, prodEnergy, prodMinerals, prodTech, ruralBias, urbanBias } =
+      computeProductionFromCells(cells, cityCount, laws, t.stability || 50);
+
+    // Infra mods
+    const mods = await getInfrastructureModifiers(supabase, territory_id);
+    const prodMod = applyInfraModifiers(
+      { food: prodFood, energy: prodEnergy, minerals: prodMinerals, tech: prodTech },
+      { foodMult: mods.foodMult, energyMult: mods.energyMult, mineralsMult: mods.mineralsMult, techMult: mods.techMult }
+    );
+
+    const { data: rb } = await supabase
+      .from('resource_balances')
+      .select('*')
+      .eq('territory_id', territory_id)
+      .maybeSingle();
+
+    let newFood = (rb?.food || 0) + prodMod.food;
+    let newEnergy = (rb?.energy || 0) + prodMod.energy;
+    let newMinerals = (rb?.minerals || 0) + prodMod.minerals;
+    let newTech = (rb?.tech || 0) + prodMod.tech;
+
+    const capRes = await applyWarehouseCapacityWithInfra(supabase, territory_id, rb, newFood, newEnergy, newMinerals, newTech, mods.wasteReduction);
+    newFood = capRes.food; newEnergy = capRes.energy; newMinerals = capRes.minerals; newTech = capRes.tech;
+    const overflowLost = Math.round(capRes.overflowLost);
+    if (overflowLost > 0) eventsGenerated++;
+
+    const { data: rq } = await supabase
+      .from('territory_research_queue')
+      .select('id, queue_position')
+      .eq('territory_id', territory_id)
+      .order('queue_position', { ascending: true })
+      .limit(1);
+    const hasResearch = (rq || []).length > 0;
+
+    const { foodConsumption, energyConsumption, techConsumption } = computeConsumption(totalPop, cityCount, hasResearch, t.level);
+    newFood -= foodConsumption;
+    newEnergy -= energyConsumption;
+    newTech -= techConsumption;
+
+    const crisis = await handleCrisesAndClamp(supabase, territory_id, { food: newFood, energy: newEnergy, minerals: newMinerals, tech: newTech });
+    // Aplica redução de penalidade de crise por infra estratégica
+    const crisisPenaltyAdj = Math.max(0, 1 - (mods.crisisPenaltyReduction || 0));
+    if (crisis.crisisFood || crisis.crisisEnergy) {
+      eventsGenerated++;
+    }
+
+    await updateCellGrowth(supabase, cells, t.stability || 50, crisis.crisisFood, crisis.crisisEnergy);
+
+    const surplusFood = newFood - foodConsumption;
+    const surplusEnergy = newEnergy - energyConsumption;
+
+    const mig = await applyMigration(supabase, territory_id, urbanPop, ruralPop, totalPop, surplusFood, surplusEnergy, hasResearch, crisis.crisisFood, crisis.crisisEnergy);
+
+    const newStability = await applyStability(supabase, territory_id, t.stability || 50, surplusFood, surplusEnergy, crisis.crisisFood, crisis.crisisEnergy, ruralBias, urbanBias);
+
+    await updateResourceBalances(supabase, territory_id, { food: Math.max(0, crisis.food), energy: Math.max(0, crisis.energy), minerals: Math.max(0, crisis.minerals), tech: Math.max(0, crisis.tech) }, nextTickNumber);
+
     territoriesProcessed++;
+
+    perStateSnapshots.push({
+      territory_id,
+      prod: { food: Math.round(prodMod.food), energy: Math.round(prodMod.energy), minerals: Math.round(prodMod.minerals), tech: Math.round(prodMod.tech) },
+      cons: { food: Math.round(foodConsumption), energy: Math.round(energyConsumption), tech: Math.round(techConsumption) },
+      crises: { food: crisis.crisisFood, energy: crisis.crisisEnergy, minerals: crisis.crisisMinerals, tech: crisis.crisisTech },
+      migration_net: mig.migrationNet,
+      stability_after: newStability,
+      overflow_lost: overflowLost,
+    });
   }
 
-  // Mercado autoexecução
-  const tradesExecuted = await processMarketAutoExecution(supabase);
+  // Mercado após produção/consumo
+  const tradesExecuted = await processMarket(supabase);
 
-  // Summary e finalize
   const summary = {
     per_state: perStateSnapshots,
     trades_executed: tradesExecuted,
@@ -834,14 +1242,12 @@ async function runTick(req: Request) {
 
   await finalizeTick(supabase, nextTickNumber, started_at, summary, config);
 
-  // Evento planetário
   await supabase.from('event_logs').insert({
     event_type: 'global',
     title: 'Tick concluído',
-    description: `Tick #${nextTickNumber} finalizado: ${territoriesProcessed} Estados processados, ${eventsGenerated} eventos, ${tradesExecuted} trades.`,
+    description: `Tick #${nextTickNumber} finalizado: ${territoriesProcessed} Estados, ${eventsGenerated} eventos, ${tradesExecuted} trades.`,
   });
 
-  // Atualiza planet_config.tick_number (se existir)
   await supabase
     .from('planet_config')
     .update({ tick_number: nextTickNumber })

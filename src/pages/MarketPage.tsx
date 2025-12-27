@@ -55,6 +55,8 @@ const resourceLabels: Record<string, { name: string; icon: typeof Wheat; color: 
   token_state: { name: 'State Token', icon: Flag, color: 'text-purple-400' },
 };
 
+const [avgPrices, setAvgPrices] = useState<Record<string, number>>({});
+
 export default function MarketPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -107,6 +109,26 @@ export default function MarketPage() {
         if (historyRes.data) setTradeHistory(historyRes.data);
         if (territoriesRes.data?.length) setSelectedTerritory(territoriesRes.data[0].id);
       }
+
+      // compute average prices from last 24h trades
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentTrades } = await supabase
+        .from('trade_history')
+        .select('resource_type, price_per_unit')
+        .gte('created_at', since);
+
+      const acc: Record<string, { sum: number; count: number }> = {};
+      for (const tr of recentTrades || []) {
+        const key = tr.resource_type;
+        acc[key] = acc[key] || { sum: 0, count: 0 };
+        acc[key].sum += Number(tr.price_per_unit || 0);
+        acc[key].count += 1;
+      }
+      const avg: Record<string, number> = {};
+      Object.keys(acc).forEach((k) => {
+        avg[k] = acc[k].count > 0 ? acc[k].sum / acc[k].count : 0;
+      });
+      setAvgPrices(avg);
     } catch (error) {
       console.error('Error fetching market data:', error);
     } finally {
@@ -159,6 +181,29 @@ export default function MarketPage() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 space-y-8">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Preço Médio do Dia</CardTitle>
+            <CardDescription>Média dos últimos trades (24h)</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {['food','energy','minerals','tech'].map((res) => {
+              const cfg = resourceLabels[res];
+              const price = avgPrices[res] || 0;
+              const Icon = cfg.icon;
+              return (
+                <div key={res} className="p-3 rounded bg-muted/40 flex items-center justify-between">
+                  <div className={`flex items-center gap-2 ${cfg.color}`}>
+                    <Icon className="w-4 h-4" />
+                    <span className="text-sm">{cfg.name}</span>
+                  </div>
+                  <span className="font-bold">₮{price > 0 ? price.toFixed(2) : '-'}</span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-4xl font-display text-glow">Mercado Planetário</h1>
