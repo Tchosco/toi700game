@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from './AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,8 +35,8 @@ export default function AdminWorldConfig() {
     season_day: 1,
   });
 
-  // Update form data when config loads
-  useState(() => {
+  // Atualiza os campos do formulário quando a configuração for carregada
+  useEffect(() => {
     if (config) {
       setFormData({
         cell_size_km2_default: Number(config.cell_size_km2_default),
@@ -47,7 +47,7 @@ export default function AdminWorldConfig() {
         season_day: config.season_day,
       });
     }
-  });
+  }, [config]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
