@@ -27,6 +27,16 @@ export default function DynamicMapPage() {
   const [totalCells, setTotalCells] = useState(0);
   const [lastTick, setLastTick] = useState<any>(null);
 
+  // Helper: RPC call without generics to avoid TSX parsing conflicts
+  const rpcCall = async (fn: string, params: any): Promise<any | null> => {
+    const { data, error } = await (supabase as any).rpc(fn, params);
+    if (error) {
+      console.error('RPC error:', fn, error);
+      return null;
+    }
+    return data;
+  };
+
   useEffect(() => {
     fetchInitial();
   }, []);
@@ -51,54 +61,36 @@ export default function DynamicMapPage() {
   }
 
   async function fetchClusters() {
-    const rpc = async <T>(fn: string, params: any): Promise<T | null> => {
-      const { data, error } = await (supabase as any).rpc(fn, params);
-      if (error) return null;
-      return data as T;
-    };
-
-    const resp = await rpc<any>("get_region_clusters", {
+    const resp = await rpcCall("get_region_clusters", {
       p_region_id: filters.regionId || null,
       p_type_filter: filters.type || null,
       p_status_filter: filters.status || null,
       p_owner_territory_id: filters.onlyMine ? await myTerritoryId() : null,
     });
-    if (resp && (resp as any).success) {
-      setClusters((resp as any).clusters || []);
+    if (resp && resp.success) {
+      setClusters(resp.clusters || []);
     } else {
       setClusters([]);
     }
   }
 
   async function fetchSectors(rid: string) {
-    const rpc = async <T>(fn: string, params: any): Promise<T | null> => {
-      const { data, error } = await (supabase as any).rpc(fn, params);
-      if (error) return null;
-      return data as T;
-    };
-
-    const resp = await rpc<any>("get_region_sectors", {
+    const resp = await rpcCall("get_region_sectors", {
       p_region_id: rid,
       p_bucket_size: 300,
       p_type_filter: filters.type || null,
       p_status_filter: filters.status || null,
       p_owner_territory_id: filters.onlyMine ? await myTerritoryId() : null,
     });
-    if (resp && (resp as any).success) {
-      setSectors((resp as any).sectors || []);
+    if (resp && resp.success) {
+      setSectors(resp.sectors || []);
     } else {
       setSectors([]);
     }
   }
 
   async function fetchSectorCells(rid: string, skey: number, p: number) {
-    const rpc = async <T>(fn: string, params: any): Promise<T | null> => {
-      const { data, error } = await (supabase as any).rpc(fn, params);
-      if (error) return null;
-      return data as T;
-    };
-
-    const resp = await rpc<any>("get_sector_cells", {
+    const resp = await rpcCall("get_sector_cells", {
       p_region_id: rid,
       p_sector_key: skey,
       p_page: p,
@@ -114,9 +106,9 @@ export default function DynamicMapPage() {
       p_density_max: filters.densityMax ?? null,
       p_predominant_resource: filters.predominant ?? null,
     });
-    if (resp && (resp as any).success) {
-      setCells((resp as any).cells || []);
-      setTotalCells((resp as any).total || 0);
+    if (resp && resp.success) {
+      setCells(resp.cells || []);
+      setTotalCells(resp.total || 0);
     } else {
       setCells([]);
       setTotalCells(0);
