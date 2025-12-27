@@ -45,7 +45,7 @@ export default function AuthPage() {
       passwordSchema.parse(loginPassword);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
+        toast.error(err.issues[0].message);
         setLoading(false);
         return;
       }
@@ -77,7 +77,7 @@ export default function AuthPage() {
       usernameSchema.parse(signupUsername);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
+        toast.error(err.issues[0].message);
         setLoading(false);
         return;
       }

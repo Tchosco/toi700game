@@ -108,7 +108,7 @@ export default function CreateTerritoryPage() {
     } catch (err) {
       if (err instanceof z.ZodError) {
         const newErrors: Record<string, string> = {};
-        err.errors.forEach((e) => {
+        err.issues.forEach((e) => {
           if (e.path[0]) {
             newErrors[e.path[0] as string] = e.message;
           }
