@@ -20,7 +20,7 @@ export default function ConstructionQueuePage() {
     const { data: terr } = await supabase.from("territories").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
     setTerritoryId(terr?.id || null);
 
-    const { data: q } = await supabase.from("construction_queue").select("*").eq("territory_id", terr?.id || "");
+    const { data: q } = await (supabase as any).from("construction_queue").select("*").eq("territory_id", terr?.id || "");
     setQueue(q || []);
   }
 

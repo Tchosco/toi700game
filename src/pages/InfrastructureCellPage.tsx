@@ -27,7 +27,7 @@ export default function InfrastructureCellPage() {
     const { data: terr } = await supabase.from("territories").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
     setTerritoryId(terr?.id || null);
 
-    const { data: t } = await supabase.from("cell_infrastructure_types").select("*");
+    const { data: t } = await (supabase as any).from("cell_infrastructure_types").select("*");
     setTypes(t || []);
 
     const { data: myCells } = await supabase
@@ -37,9 +37,9 @@ export default function InfrastructureCellPage() {
     setCells(myCells || []);
     setSelectedCell(myCells?.[0]?.id || "");
 
-    const { data: b } = await supabase.from("infra_cell").select("*").eq("territory_id", terr?.id || "");
+    const { data: b } = await (supabase as any).from("infra_cell").select("*").eq("territory_id", terr?.id || "");
     setBuilt(b || []);
-    const { data: q } = await supabase.from("construction_queue").select("*").eq("territory_id", terr?.id || "").eq("level", "cell");
+    const { data: q } = await (supabase as any).from("construction_queue").select("*").eq("territory_id", terr?.id || "").eq("level", "cell");
     setQueue(q || []);
   }
 
@@ -72,7 +72,7 @@ export default function InfrastructureCellPage() {
       updated_at: new Date().toISOString()
     }).eq("id", user!.id);
 
-    await supabase.from("construction_queue").insert({
+    await (supabase as any).from("construction_queue").insert({
       territory_id: territoryId,
       cell_id: selectedCell,
       level: "cell",

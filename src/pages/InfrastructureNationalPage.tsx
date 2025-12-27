@@ -24,22 +24,20 @@ export default function InfrastructureNationalPage() {
     const { data: terr } = await supabase.from("territories").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
     setTerritoryId(terr?.id || null);
 
-    const { data: t } = await supabase.from("national_infrastructure_types").select("*");
+    const { data: t } = await (supabase as any).from("national_infrastructure_types").select("*");
     setTypes(t || []);
-    const { data: b } = await supabase.from("infra_national").select("*").eq("territory_id", terr?.id || "");
+    const { data: b } = await (supabase as any).from("infra_national").select("*").eq("territory_id", terr?.id || "");
     setBuilt(b || []);
-    const { data: q } = await supabase.from("construction_queue").select("*").eq("territory_id", terr?.id || "").eq("level", "national");
+    const { data: q } = await (supabase as any).from("construction_queue").select("*").eq("territory_id", terr?.id || "").eq("level", "national");
     setQueue(q || []);
   }
 
   async function startConstruction(key: string) {
     if (!territoryId) return;
-    // Get type (for build_ticks)
     const type = types.find((x) => x.key === key);
     if (!type) return;
     const ticks = type.build_ticks || 3;
 
-    // Deduct costs from warehouse & currency
     const { data: rb } = await supabase.from("resource_balances").select("*").eq("territory_id", territoryId).maybeSingle();
     if (!rb || rb.food < type.cost_food || rb.energy < type.cost_energy || rb.minerals < type.cost_minerals) {
       toast.error("Recursos insuficientes no Armazém");
@@ -63,8 +61,8 @@ export default function InfrastructureNationalPage() {
       updated_at: new Date().toISOString()
     }).eq("id", user!.id);
 
-    // Enqueue construction
-    await supabase.from("construction_queue").insert({
+    // Enqueue construction (any-cast for table not in typed Database)
+    await (supabase as any).from("construction_queue").insert({
       territory_id: territoryId,
       level: "national",
       type_key: key,

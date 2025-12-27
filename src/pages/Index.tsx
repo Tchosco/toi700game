@@ -30,8 +30,31 @@ export default function Index() {
     setEvents(ev || []);
 
     if (user) {
-      const { data: t } = await supabase.from("territories").select("id, name, stability, total_rural_population, total_urban_population, cells_owned_count").eq("owner_id", user.id).limit(1).maybeSingle();
-      setMyTerritory(t || null);
+      // Avoid selecting a column not present in typed Database and compute it separately
+      const { data: t } = await supabase
+        .from("territories")
+        .select("id, name, stability, total_rural_population, total_urban_population")
+        .eq("owner_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (t) {
+        const { count: cellsCount } = await supabase
+          .from("cells")
+          .select("id", { count: "exact", head: true })
+          .eq("owner_territory_id", t.id);
+
+        setMyTerritory({
+          id: t.id,
+          name: t.name,
+          stability: t.stability,
+          total_rural_population: t.total_rural_population,
+          total_urban_population: t.total_urban_population,
+          cells_owned_count: cellsCount || 0,
+        });
+      } else {
+        setMyTerritory(null);
+      }
     }
   }
 
