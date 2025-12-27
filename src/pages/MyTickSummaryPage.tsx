@@ -49,8 +49,11 @@ export default function MyTickSummaryPage() {
       .limit(1)
       .maybeSingle();
 
-    const perState = tick?.summary?.per_state || [];
+    // FIX: summary é Json; fazer cast seguro antes de acessar per_state
+    const summaryObj = (tick?.summary as any) || null;
+    const perState = Array.isArray(summaryObj?.per_state) ? summaryObj.per_state : [];
     const mine = perState.find((s: any) => s.territory_id === terr.id) || null;
+
     setSummary({ tick_number: tick?.tick_number || 0, snapshot: mine });
     setLoading(false);
   }
