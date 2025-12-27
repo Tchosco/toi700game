@@ -635,179 +635,235 @@ async function applyGlobalMigrationBalanced(
   return { logs: eventsLogged };
 }
 
-// Entry point
+// Tipos para snapshots por território e resultado do tick
+type TerritoryTickSnapshot = {
+  territory_id: string;
+  prod: { food: number; energy: number; minerals: number; tech: number };
+  cons: { food: number; energy: number; tech: number };
+  crises: { food: boolean; energy: boolean; minerals: boolean; tech: boolean };
+  migration_net: number;
+  stability_after: number;
+  overflow_lost: number;
+};
+
+type TerritoryTickResult = {
+  snapshot: TerritoryTickSnapshot;
+  citiesProcessedDelta: number;
+  eventsGeneratedDelta: number;
+};
+
+// Processa um único território (modular)
+async function processTerritoryTick(
+  supabase: Supa,
+  t: Territory,
+  lawsByTerritory: Map<string, Law[]>,
+  nextTickNumber: number
+): Promise<TerritoryTickResult> {
+  const territory_id = t.id;
+
+  // Agregação
+  const { cells, ruralPop, urbanPop, totalPop, cityCount } = await aggregateTerritory(supabase, territory_id);
+
+  // Persistir agregados básicos
+  await applyAggregatesToTerritory(supabase, territory_id, ruralPop, urbanPop, cells.length, cityCount);
+
+  // Produção
+  const laws = lawsByTerritory.get(territory_id) || [];
+  const { prodFood, prodEnergy, prodMinerals, prodTech, ruralBias, urbanBias } =
+    computeProductionFromCells(cells, cityCount, laws, t.stability || 50);
+
+  // Armazém atual
+  const { data: rb } = await supabase
+    .from('resource_balances')
+    .select('*')
+    .eq('territory_id', territory_id)
+    .maybeSingle();
+
+  let newFood = (rb?.food || 0) + prodFood;
+  let newEnergy = (rb?.energy || 0) + prodEnergy;
+  let newMinerals = (rb?.minerals || 0) + prodMinerals;
+  let newTech = (rb?.tech || 0) + prodTech;
+
+  // Capacidade de armazém (descarta overflow e loga)
+  const capRes = await applyWarehouseCapacity(supabase, territory_id, rb, newFood, newEnergy, newMinerals, newTech);
+  newFood = capRes.food; newEnergy = capRes.energy; newMinerals = capRes.minerals; newTech = capRes.tech;
+  const overflowLost = Math.round(capRes.overflowLost);
+  let eventsGeneratedDelta = overflowLost > 0 ? 1 : 0;
+
+  // Consumo
+  const { data: rq } = await supabase
+    .from('territory_research_queue')
+    .select('id, queue_position')
+    .eq('territory_id', territory_id)
+    .order('queue_position', { ascending: true })
+    .limit(1);
+  const hasResearch = (rq || []).length > 0;
+
+  const { foodConsumption, energyConsumption, techConsumption } = computeConsumption(totalPop, cityCount, hasResearch);
+  newFood -= foodConsumption;
+  newEnergy -= energyConsumption;
+  newTech -= techConsumption;
+
+  // Crises e clamp
+  const crisis = await handleCrisesAndClamp(supabase, territory_id, { food: newFood, energy: newEnergy, minerals: newMinerals, tech: newTech });
+  newFood = crisis.food; newEnergy = crisis.energy; newMinerals = crisis.minerals; newTech = crisis.tech;
+  if (crisis.crisisFood || crisis.crisisEnergy || crisis.crisisMinerals || crisis.crisisTech) eventsGeneratedDelta++;
+
+  // Crescimento populacional por célula
+  await updateCellGrowth(supabase, cells, t.stability || 50, crisis.crisisFood, crisis.crisisEnergy);
+
+  // Migração líquida (por território, conservativa local)
+  const surplusFood = newFood - foodConsumption;
+  const surplusEnergy = newEnergy - energyConsumption;
+  const mig = await applyMigration(
+    supabase,
+    territory_id,
+    urbanPop,
+    ruralPop,
+    totalPop,
+    surplusFood,
+    surplusEnergy,
+    hasResearch,
+    crisis.crisisFood,
+    crisis.crisisEnergy
+  );
+
+  // Estabilidade
+  const newStability = await applyStability(
+    supabase,
+    territory_id,
+    t.stability || 50,
+    surplusFood,
+    surplusEnergy,
+    crisis.crisisFood,
+    crisis.crisisEnergy,
+    ruralBias,
+    urbanBias
+  );
+
+  // Atualiza armazém
+  await updateResourceBalances(supabase, territory_id, { food: newFood, energy: newEnergy, minerals: newMinerals, tech: newTech }, nextTickNumber);
+
+  // Retornar snapshot e deltas
+  const snapshot: TerritoryTickSnapshot = {
+    territory_id,
+    prod: {
+      food: Math.round(prodFood),
+      energy: Math.round(prodEnergy),
+      minerals: Math.round(prodMinerals),
+      tech: Math.round(prodTech),
+    },
+    cons: {
+      food: Math.round(foodConsumption),
+      energy: Math.round(energyConsumption),
+      tech: Math.round(techConsumption),
+    },
+    crises: {
+      food: crisis.crisisFood,
+      energy: crisis.crisisEnergy,
+      minerals: crisis.crisisMinerals,
+      tech: crisis.crisisTech,
+    },
+    migration_net: mig.migrationNet,
+    stability_after: newStability,
+    overflow_lost: overflowLost,
+  };
+
+  return {
+    snapshot,
+    citiesProcessedDelta: cityCount,
+    eventsGeneratedDelta,
+  };
+}
+
+// Orquestrador do tick (modular)
+async function runTick(req: Request) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Auth admin
+  const auth = await authenticateAdmin(req, supabase);
+  if (!auth.ok) {
+    return {
+      status: auth.status,
+      body: { success: false, error: auth.error },
+    };
+  }
+
+  // Config e próximo tick
+  const { config, nextTickNumber, started_at } = await getConfigAndTick(supabase);
+
+  // Pré-processos
+  await processConstructionQueue(supabase);
+
+  // Leis ativas
+  const lawsByTerritory = await loadEnactedLawsByTerritory(supabase);
+
+  // Carregar territórios
+  const { data: territories } = await supabase
+    .from('territories')
+    .select('id, stability, level, vocation, pd_points, pi_points, capital_city_id');
+
+  // Loop por território
+  let territoriesProcessed = 0;
+  let citiesProcessed = 0;
+  let eventsGenerated = 0;
+  const perStateSnapshots: TerritoryTickSnapshot[] = [];
+
+  for (const t of (territories || []) as Territory[]) {
+    const res = await processTerritoryTick(supabase, t, lawsByTerritory, nextTickNumber);
+    perStateSnapshots.push(res.snapshot);
+    citiesProcessed += res.citiesProcessedDelta;
+    eventsGenerated += res.eventsGeneratedDelta;
+    territoriesProcessed++;
+  }
+
+  // Mercado autoexecução
+  const tradesExecuted = await processMarketAutoExecution(supabase);
+
+  // Summary e finalize
+  const summary = {
+    per_state: perStateSnapshots,
+    trades_executed: tradesExecuted,
+    tick_interval_hours: config?.tick_interval_hours ?? 24,
+    territories_processed: territoriesProcessed,
+    cities_processed: citiesProcessed,
+    events_generated: eventsGenerated,
+  };
+
+  await finalizeTick(supabase, nextTickNumber, started_at, summary, config);
+
+  // Evento planetário
+  await supabase.from('event_logs').insert({
+    event_type: 'global',
+    title: 'Tick concluído',
+    description: `Tick #${nextTickNumber} finalizado: ${territoriesProcessed} Estados processados, ${eventsGenerated} eventos, ${tradesExecuted} trades.`,
+  });
+
+  // Atualiza planet_config.tick_number (se existir)
+  await supabase
+    .from('planet_config')
+    .update({ tick_number: nextTickNumber })
+    .neq('id', '');
+
+  return {
+    status: 200,
+    body: { success: true, tick_number: nextTickNumber, summary },
+  };
+}
+
+// Entry point (refatorado para usar runTick)
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const auth = await authenticateAdmin(req, supabase);
-    if (!auth.ok) {
-      return new Response(JSON.stringify({ success: false, error: auth.error }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: auth.status,
-      });
-    }
-
-    const { config, nextTickNumber, started_at } = await getConfigAndTick(supabase);
-
-    // Pré: processa construções
-    await processConstructionQueue(supabase);
-
-    // Leis ativas
-    const lawsByTerritory = await loadEnactedLawsByTerritory(supabase);
-
-    // Estados
-    const { data: territories } = await supabase
-      .from('territories')
-      .select('id, stability, level, vocation, pd_points, pi_points, capital_city_id');
-
-    let territoriesProcessed = 0;
-    let citiesProcessed = 0;
-    let eventsGenerated = 0;
-    const perStateSnapshots: any[] = [];
-
-    for (const t of (territories || []) as Territory[]) {
-      const territory_id = t.id;
-
-      // Agregação
-      const { cells, ruralPop, urbanPop, totalPop, cityCount } = await aggregateTerritory(supabase, territory_id);
-      citiesProcessed += cityCount;
-
-      // Salva agregados
-      await applyAggregatesToTerritory(supabase, territory_id, ruralPop, urbanPop, cells.length, cityCount);
-
-      // Produção
-      const laws = lawsByTerritory.get(territory_id) || [];
-      const { prodFood, prodEnergy, prodMinerals, prodTech, ruralBias, urbanBias } =
-        computeProductionFromCells(cells, cityCount, laws, t.stability || 50);
-
-      // Armazém atual
-      const { data: rb } = await supabase
-        .from('resource_balances')
-        .select('*')
-        .eq('territory_id', territory_id)
-        .maybeSingle();
-
-      let newFood = (rb?.food || 0) + prodFood;
-      let newEnergy = (rb?.energy || 0) + prodEnergy;
-      let newMinerals = (rb?.minerals || 0) + prodMinerals;
-      let newTech = (rb?.tech || 0) + prodTech;
-
-      // Capacidade
-      const capRes = await applyWarehouseCapacity(supabase, territory_id, rb, newFood, newEnergy, newMinerals, newTech);
-      newFood = capRes.food; newEnergy = capRes.energy; newMinerals = capRes.minerals; newTech = capRes.tech;
-      const overflowLost = Math.round(capRes.overflowLost);
-      if (overflowLost > 0) eventsGenerated++;
-
-      // Consumo
-      const { data: rq } = await supabase
-        .from('territory_research_queue')
-        .select('id, queue_position')
-        .eq('territory_id', territory_id)
-        .order('queue_position', { ascending: true })
-        .limit(1);
-      const hasResearch = (rq || []).length > 0;
-
-      const { foodConsumption, energyConsumption, techConsumption } = computeConsumption(totalPop, cityCount, hasResearch, t.level);
-
-      newFood -= foodConsumption;
-      newEnergy -= energyConsumption;
-      newTech -= techConsumption;
-
-      // Crises
-      const crisis = await handleCrisesAndClamp(supabase, territory_id, { food: newFood, energy: newEnergy, minerals: newMinerals, tech: newTech });
-      newFood = crisis.food; newEnergy = crisis.energy; newMinerals = crisis.minerals; newTech = crisis.tech;
-      if (crisis.crisisFood || crisis.crisisEnergy || crisis.crisisMinerals || crisis.crisisTech) eventsGenerated++;
-
-      // Crescimento
-      await updateCellGrowth(supabase, cells, t.stability || 50, crisis.crisisFood, crisis.crisisEnergy);
-
-      // Migração será aplicada globalmente depois; apenas calcular atratividade e surplus
-      const surplusFood = newFood - foodConsumption;
-      const surplusEnergy = newEnergy - energyConsumption;
-      const attractiveness = computeAttractiveness(t.stability || 50, surplusFood, surplusEnergy, newTech);
-
-      // Estabilidade
-      const newStability = await applyStability(supabase, territory_id, t.stability || 50, surplusFood, surplusEnergy, crisis.crisisFood, crisis.crisisEnergy, ruralBias, urbanBias);
-
-      // Atualiza armazém
-      await updateResourceBalances(supabase, territory_id, { food: newFood, energy: newEnergy, minerals: newMinerals, tech: newTech }, nextTickNumber);
-
-      territoriesProcessed++;
-
-      // Snapshot p/ resumo e migração global
-      perStateSnapshots.push({
-        territory_id,
-        prod: { food: Math.round(prodFood), energy: Math.round(prodEnergy), minerals: Math.round(prodMinerals), tech: Math.round(prodTech) },
-        cons: { food: Math.round(foodConsumption), energy: Math.round(energyConsumption), tech: Math.round(techConsumption) },
-        crises: { food: crisis.crisisFood, energy: crisis.crisisEnergy, minerals: crisis.crisisMinerals, tech: crisis.crisisTech },
-        migration_net: 0, // será definido após migração global
-        stability_after: newStability,
-        overflow_lost: overflowLost,
-        // Dados para migração global
-        totalPop,
-        ruralPop,
-        urbanPop,
-        foodAfter: newFood,
-        energyAfter: newEnergy,
-        techAfter: newTech,
-        attractiveness,
-      });
-    }
-
-    // Mercado
-    const tradesExecuted = await processMarketAutoExecution(supabase);
-
-    // MIGRAÇÃO GLOBAL BALANCEADA
-    const migResult = await applyGlobalMigrationBalanced(
-      supabase,
-      perStateSnapshots.map(s => ({
-        territory_id: s.territory_id,
-        totalPop: s.totalPop,
-        ruralPop: s.ruralPop,
-        urbanPop: s.urbanPop,
-        foodAfter: s.foodAfter,
-        energyAfter: s.energyAfter,
-        techAfter: s.techAfter,
-        stabilityAfter: s.stability_after,
-        attractiveness: s.attractiveness,
-      }))
-    );
-    eventsGenerated += migResult.logs;
-
-    // Summary e finalize
-    const summary = {
-      per_state: perStateSnapshots,
-      trades_executed: tradesExecuted,
-      tick_interval_hours: config?.tick_interval_hours ?? 24,
-      territories_processed: territoriesProcessed,
-      cities_processed: citiesProcessed,
-      events_generated: eventsGenerated,
-    };
-
-    await finalizeTick(supabase, nextTickNumber, started_at, summary, config);
-
-    // Registrar evento planetário de tick concluído
-    await supabase.from('event_logs').insert({
-      event_type: 'global',
-      title: 'Tick concluído',
-      description: `Tick #${nextTickNumber} finalizado: ${territoriesProcessed} Estados processados, ${eventsGenerated} eventos, ${tradesExecuted} trades.`,
-    });
-
-    // Atualizar planet_config.tick_number (se existir)
-    await supabase
-      .from('planet_config')
-      .update({ tick_number: nextTickNumber })
-      .neq('id', '');
-
-    return new Response(JSON.stringify({ success: true, tick_number: nextTickNumber, summary }), {
+    const result = await runTick(req);
+    return new Response(JSON.stringify(result.body), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: result.status,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Erro desconhecido';
