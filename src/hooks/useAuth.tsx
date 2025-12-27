@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const [bootstrapDone, setBootstrapDone] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -32,6 +35,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => {
             checkAdminRole(session.user.id);
           }, 0);
+
+          // Ensure first territory is created exactly once after sign-in
+          if (!bootstrapDone) {
+            ensureFirstTerritory(session.user.id)
+              .catch(() => {})
+              .finally(() => setBootstrapDone(true));
+          }
         } else {
           setIsAdmin(false);
         }
@@ -45,6 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (session?.user) {
         checkAdminRole(session.user.id);
+        if (!bootstrapDone) {
+          ensureFirstTerritory(session.user.id)
+            .catch(() => {})
+            .finally(() => setBootstrapDone(true));
+        }
       }
       setLoading(false);
     });
@@ -68,6 +83,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch {
       setIsAdmin(false);
+    }
+  };
+
+  const ensureFirstTerritory = async (userId: string) => {
+    // Check if user already has a territory
+    const { data: existing } = await supabase
+      .from('territories')
+      .select('id')
+      .eq('owner_id', userId)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      // Already has a territory; no-op
+      return;
+    }
+
+    // Invoke edge function to bootstrap first territory
+    const { data, error } = await supabase.functions.invoke('bootstrap-first-territory', {});
+    if (error) {
+      // Silently ignore here; user can try manual creation later
+      return;
+    }
+    if (data?.success && data?.data?.territory_id) {
+      // Redirect new player straight to the created state's panel
+      navigate(`/territorio/${data.data.territory_id}`);
     }
   };
 
