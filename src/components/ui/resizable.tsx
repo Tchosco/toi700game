@@ -1,9 +1,15 @@
+import * as React from "react";
 import { GripVertical } from "lucide-react";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import * as RSP from "react-resizable-panels";
 
 import { cn } from "@/lib/utils";
 
-const ResizablePanelGroup = ({ className, ...props }: React.ComponentProps<typeof PanelGroup>) => (
+// Safely access components regardless of type export mismatches
+const PanelGroup = (RSP as any).PanelGroup as React.ComponentType<any>;
+const Panel = (RSP as any).Panel as React.ComponentType<any>;
+const PanelResizeHandle = (RSP as any).PanelResizeHandle as React.ComponentType<any>;
+
+const ResizablePanelGroup = ({ className, ...props }: any) => (
   <PanelGroup
     className={cn("flex h-full w-full data-[panel-group-direction=vertical]:flex-col", className)}
     {...props}
@@ -16,9 +22,7 @@ const ResizableHandle = ({
   withHandle,
   className,
   ...props
-}: React.ComponentProps<typeof PanelResizeHandle> & {
-  withHandle?: boolean;
-}) => (
+}: { withHandle?: boolean; className?: string } & any) => (
   <PanelResizeHandle
     className={cn(
       "relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:-translate-y-1/2 data-[panel-group-direction=vertical]:after:translate-x-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 [&[data-panel-group-direction=vertical]>div]:rotate-90",
