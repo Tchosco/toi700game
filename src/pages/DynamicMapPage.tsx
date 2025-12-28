@@ -27,7 +27,6 @@ export default function DynamicMapPage() {
   const [totalCells, setTotalCells] = useState(0);
   const [lastTick, setLastTick] = useState<any>(null);
 
-  // Helper: RPC call without generics to avoid TSX parsing conflicts
   const rpcCall = async (fn: string, params: any): Promise<any | null> => {
     const { data, error } = await (supabase as any).rpc(fn, params);
     if (error) {
@@ -51,6 +50,32 @@ export default function DynamicMapPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom, regionId, sectorKey, filters, page]);
+
+  // Realtime subscription: cells changes trigger refetch according to current zoom
+  useEffect(() => {
+    const channel = supabase
+      .channel('dynamic-map-cells')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'cells',
+      }, (payload) => {
+        // Refetch based on current view
+        if (zoom === 1) {
+          fetchClusters();
+        } else if (zoom === 2 && regionId) {
+          fetchSectors(regionId);
+        } else if (zoom === 3 && regionId && sectorKey !== null) {
+          fetchSectorCells(regionId, sectorKey, page);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom, regionId, sectorKey, page, filters]);
 
   async function fetchInitial() {
     const { data: regionsData } = await supabase.from('regions').select('id, name').order('name');
@@ -142,6 +167,7 @@ export default function DynamicMapPage() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Header & legend */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <Map className="h-8 w-8 text-primary" />
@@ -200,8 +226,14 @@ export default function DynamicMapPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {clusters.map((cl: any) => {
               const regionName = regions.find(r => r.id === cl.region_id)?.name || cl.region_id;
+              const metricKey =
+                heatmap === 'habitability' ? 'habitability_avg' :
+                heatmap === 'fertility' ? 'fertility_avg' :
+                heatmap === 'minerals' ? 'minerals_avg' :
+                heatmap === 'energy' ? 'energy_avg' : 'density_avg';
+              const metricVal = cl.metrics[metricKey];
               return (
-                <div key={cl.region_id} className={`rounded border ${heatColor(cl.metrics[heatmap === 'habitability' ? 'habitability_avg' : heatmap === 'fertility' ? 'fertility_avg' : heatmap === 'minerals' ? 'minerals_avg' : heatmap === 'energy' ? 'energy_avg' : 'density_avg'])}`}>
+                <div key={cl.region_id} className={`rounded border ${heatColor(metricVal)}`}>
                   <ClusterCard regionName={regionName} data={cl} onEnter={() => enterRegion(cl.region_id)} />
                 </div>
               );

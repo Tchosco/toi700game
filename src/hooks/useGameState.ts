@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,7 +11,6 @@ type WorldConfig = {
   last_tick_at?: string | null;
   total_ticks?: number | null;
   season_day?: number | null;
-  // Optional legacy/dev fields
   land_area_km2?: number;
   total_population?: number;
   planet_area_total_km2?: number;
@@ -45,7 +45,6 @@ export function useGameState() {
   const worldConfigQuery = useQuery({
     queryKey: ["worldConfig"],
     queryFn: async (): Promise<WorldConfig | null> => {
-      // Try planet_config (DEV), then fallback to world_config
       try {
         const { data: pc } = await (supabase as any)
           .from("planet_config")
@@ -91,11 +90,42 @@ export function useGameState() {
     staleTime: 15_000,
   });
 
+  // Realtime subscriptions: invalidate and refetch on changes
+  useEffect(() => {
+    const chTicks = supabase
+      .channel("game-state-ticks")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tick_logs" }, () => {
+        qc.invalidateQueries({ queryKey: ["lastTick"] });
+        qc.invalidateQueries({ queryKey: ["worldConfig"] });
+        qc.invalidateQueries({ queryKey: ["planetEvents"] });
+      })
+      .subscribe();
+
+    const chWorld = supabase
+      .channel("game-state-world")
+      .on("postgres_changes", { event: "*", schema: "public", table: "world_config" }, () => {
+        qc.invalidateQueries({ queryKey: ["worldConfig"] });
+      })
+      .subscribe();
+
+    const chEvents = supabase
+      .channel("game-state-events")
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_logs" }, () => {
+        qc.invalidateQueries({ queryKey: ["planetEvents"] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(chTicks);
+      supabase.removeChannel(chWorld);
+      supabase.removeChannel(chEvents);
+    };
+  }, [qc]);
+
   const config = worldConfigQuery.data;
   const lastTick = lastTickQuery.data;
   const events = eventsQuery.data || [];
 
-  // Derived metrics
   const density =
     config?.land_area_km2 && config?.total_population
       ? config.total_population / config.land_area_km2
