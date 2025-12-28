@@ -75,7 +75,7 @@ export default function PopulationPage() {
         };
       });
 
-      // Calcular tendência rural/urbana baseado em células do território:
+      // Calcular tendência rural/urbana baseada em fertilidade/infra (células do território)
       const withTrend = await Promise.all(
         summaries.map(async (s) => {
           const { data: cells } = await supabase
@@ -96,7 +96,6 @@ export default function PopulationPage() {
             }
             s.trend = urbanScore > ruralScore ? 'urban' : 'rural';
           } else {
-            // fallback pela razão urbana
             s.trend = s.urbanRatio > 50 ? 'urban' : 'rural';
           }
           return s;
@@ -243,17 +242,18 @@ export default function PopulationPage() {
                             </div>
                           </div>
                         </div>
+                        {/* Tendência baseada nas células */}
                         <div className="mt-3">
                           <Badge variant="outline" className="flex items-center gap-2">
                             {territory.trend === 'urban' ? (
                               <>
                                 <Building2 className="w-3 h-3 text-primary" />
-                                Tendência: Urbana (infra/cidade/tecnologia)
+                                Tendência: Urbana (infraestrutura/cidades/tecnologia)
                               </>
                             ) : (
                               <>
                                 <TreePine className="w-3 h-3 text-green-500" />
-                                Tendência: Rural (fertilidade/ alimentos)
+                                Tendência: Rural (fertilidade/produção de alimentos)
                               </>
                             )}
                           </Badge>
