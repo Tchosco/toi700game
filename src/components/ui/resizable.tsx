@@ -1,13 +1,8 @@
 import * as React from "react";
 import { GripVertical } from "lucide-react";
-import * as RSP from "react-resizable-panels";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 import { cn } from "@/lib/utils";
-
-// Resolver componentes via namespace (evita conflitos de tipos/named exports)
-const PanelGroup = (RSP as any).PanelGroup as React.ComponentType<any>;
-const Panel = (RSP as any).Panel as React.ComponentType<any>;
-const PanelResizeHandle = (RSP as any).PanelResizeHandle as React.ComponentType<any>;
 
 const ResizablePanelGroup = ({ className, ...props }: any) => (
   <PanelGroup

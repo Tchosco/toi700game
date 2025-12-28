@@ -15,10 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  Loader2, Wallet, Coins, TrendingUp, TrendingDown, Minus, ShoppingCart, ArrowUpDown,
+  Loader2, Wallet, Coins, ArrowUpDown,
   Building2, MapPin, Flag, Zap, Wheat, Gem, Cpu, Plus, X, History
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+// REMOVED: import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -57,8 +57,6 @@ const resourceLabels: Record<string, { name: string; icon: typeof Wheat; color: 
   token_state: { name: 'State Token', icon: Flag, color: 'text-purple-400' },
 };
 
-const [avgPrices, setAvgPrices] = useState<Record<string, number>>({});
-
 export default function MarketPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -79,6 +77,9 @@ export default function MarketPage() {
   const [quantity, setQuantity] = useState(1);
   const [pricePerUnit, setPricePerUnit] = useState(10);
   const [selectedTerritory, setSelectedTerritory] = useState('');
+
+  // ADDED: avgPrices agora dentro do componente para respeitar as regras de hooks do React
+  const [avgPrices, setAvgPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchData();
