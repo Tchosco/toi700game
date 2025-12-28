@@ -42,7 +42,7 @@ type EventLog = {
 export function useGameState() {
   const qc = useQueryClient();
 
-  const worldConfigQuery = useQuery({
+  const worldConfigQuery = useQuery<WorldConfig | null>({
     queryKey: ["worldConfig"],
     queryFn: async (): Promise<WorldConfig | null> => {
       try {
@@ -58,12 +58,12 @@ export function useGameState() {
         .select("*")
         .limit(1)
         .maybeSingle();
-      return wc as WorldConfig | null;
+      return (wc ?? null) as WorldConfig | null;
     },
     staleTime: 60_000,
   });
 
-  const lastTickQuery = useQuery({
+  const lastTickQuery = useQuery<TickLog | null>({
     queryKey: ["lastTick"],
     queryFn: async (): Promise<TickLog | null> => {
       const { data } = await supabase
@@ -72,12 +72,12 @@ export function useGameState() {
         .order("tick_number", { ascending: false })
         .limit(1)
         .maybeSingle();
-      return (data || null) as TickLog | null;
+      return (data ?? null) as TickLog | null;
     },
     staleTime: 30_000,
   });
 
-  const eventsQuery = useQuery({
+  const eventsQuery = useQuery<EventLog[]>({
     queryKey: ["planetEvents"],
     queryFn: async (): Promise<EventLog[]> => {
       const { data } = await supabase
@@ -85,7 +85,7 @@ export function useGameState() {
         .select("*, territories(name)")
         .order("created_at", { ascending: false })
         .limit(20);
-      return (data || []) as EventLog[];
+      return Array.isArray(data) ? (data as EventLog[]) : [];
     },
     staleTime: 15_000,
   });

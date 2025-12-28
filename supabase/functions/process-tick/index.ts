@@ -112,7 +112,14 @@ async function runTick(req: Request) {
 
       const newStability = await applyStability(supabase, territory_id, t.stability || 50, surplusFood, surplusEnergy, crisis.crisisFood, crisis.crisisEnergy, ruralBias, urbanBias);
 
-      await updateResourceBalances(supabase, territory_id, { food: Math.max(0, crisis.food), energy: Math.max(0, crisis.energy), minerals: Math.max(0, crisis.minerals), tech: Math.max(0, crisis.tech) }, nextTickNumber);
+      await (supabase as any).rpc('atomic_update_resource_balances', {
+        p_territory_id: territory_id,
+        p_food: Math.max(0, crisis.food),
+        p_energy: Math.max(0, crisis.energy),
+        p_minerals: Math.max(0, crisis.minerals),
+        p_tech: Math.max(0, crisis.tech),
+        p_tick_number: nextTickNumber,
+      });
 
       territoriesProcessed++;
 
