@@ -105,6 +105,9 @@ async function runTick(req: Request) {
 
       await updateCellGrowth(supabase, cells, t.stability || 50, crisis.crisisFood, crisis.crisisEnergy);
 
+      // NEW: aplicar viés rural/urbano por célula com fator aleatório de crescimento
+      await applyRuralUrbanBiases(supabase, territory_id, cells);
+
       const surplusFood = newFood - foodConsumption;
       const surplusEnergy = newEnergy - energyConsumption;
 
@@ -191,3 +194,64 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function applyRuralUrbanBiases(supabase: Supa, territory_id: string, cells: any[]) {
+  if (!cells || cells.length === 0) return;
+
+  // Preparar atualizações em lote
+  const updates: { id: string; rural_population: number; urban_population: number }[] = [];
+
+  for (const c of cells) {
+    // Garantir campos necessários
+    const id = c.id;
+    const rural = Number(c.rural_population || 0);
+    const urban = Number(c.urban_population || 0);
+
+    // Aproximações:
+    // - Fertilidade de solo: usar resource_food
+    // - Infraestrutura/terreno plano: usar resource_tech, has_city, is_urban_eligible
+    const food = Number(c.resource_food || 0);
+    const tech = Number(c.resource_tech || 0);
+    const hasCity = !!c.has_city;
+    const urbanEligible = !!c.is_urban_eligible;
+
+    const ruralBias = Math.max(0, food);
+    const urbanBias = Math.max(0, tech) + (hasCity ? 30 : 0) + (urbanEligible ? 20 : 0);
+
+    const biasSum = ruralBias + urbanBias;
+    const ruralShare = biasSum > 0 ? ruralBias / biasSum : 0.5;
+
+    // Fator aleatório de crescimento por tick (±2%)
+    const randomFactor = 1 + (Math.random() - 0.5) * 0.02;
+
+    const total = rural + urban;
+    if (total <= 0) continue;
+
+    // Crescimento base pequeno por tick (≈0.1%) ajustado pelo "desenvolvimento" (food+tech)
+    const devFactor = Math.min(1, (food + tech) / 300); // normaliza algum desenvolvimento
+    const growthRate = (0.001 + devFactor * 0.0005) * randomFactor;
+    const growth = Math.max(0, Math.round(total * growthRate));
+
+    const deltaRural = Math.round(growth * ruralShare);
+    const deltaUrban = growth - deltaRural;
+
+    updates.push({
+      id,
+      rural_population: rural + deltaRural,
+      urban_population: urban + deltaUrban,
+    });
+  }
+
+  if (updates.length === 0) return;
+
+  // Enviar em blocos para evitar payloads grandes
+  const chunkSize = 100;
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    const { error } = await supabase.from('cells').upsert(chunk, { onConflict: 'id' });
+    if (error) {
+      console.error('Erro ao aplicar viés rural/urbano:', error.message);
+      break;
+    }
+  }
+}

@@ -27,9 +27,9 @@ export default function AdminWorldConfig() {
   });
 
   const [formData, setFormData] = useState({
-    cell_size_km2_default: 7500,
-    initial_playable_land_km2: 30000000,
-    total_planet_land_km2: 269000000,
+    cell_size_km2_default: 5000,
+    initial_playable_land_km2: 321_363_000,
+    total_planet_land_km2: 321_363_000,
     max_urban_ratio: 0.20,
     tick_interval_hours: 24,
     season_day: 1,

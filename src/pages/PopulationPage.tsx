@@ -15,6 +15,7 @@ interface TerritoryPopSummary {
   ruralPop: number;
   totalPop: number;
   urbanRatio: number;
+  trend?: 'rural' | 'urban';
 }
 
 export default function PopulationPage() {
@@ -73,7 +74,36 @@ export default function PopulationPage() {
           urbanRatio: totalPop > 0 ? (urbanPop / totalPop) * 100 : 0,
         };
       });
-      setTerritories(summaries.sort((a, b) => b.totalPop - a.totalPop));
+
+      // Calcular tendência rural/urbana baseado em células do território:
+      const withTrend = await Promise.all(
+        summaries.map(async (s) => {
+          const { data: cells } = await supabase
+            .from('cells')
+            .select('resource_food, resource_tech, has_city, is_urban_eligible, rural_population, urban_population')
+            .eq('owner_territory_id', s.id);
+
+          if (cells && cells.length > 0) {
+            let ruralScore = 0;
+            let urbanScore = 0;
+            for (const c of cells) {
+              const food = Number(c.resource_food || 0);
+              const tech = Number(c.resource_tech || 0);
+              ruralScore += food;
+              urbanScore += tech;
+              if (c.has_city) urbanScore += 30;
+              if (c.is_urban_eligible) urbanScore += 20;
+            }
+            s.trend = urbanScore > ruralScore ? 'urban' : 'rural';
+          } else {
+            // fallback pela razão urbana
+            s.trend = s.urbanRatio > 50 ? 'urban' : 'rural';
+          }
+          return s;
+        })
+      );
+
+      setTerritories(withTrend.sort((a, b) => b.totalPop - a.totalPop));
     }
 
     setLoading(false);
@@ -212,6 +242,21 @@ export default function PopulationPage() {
                               </p>
                             </div>
                           </div>
+                        </div>
+                        <div className="mt-3">
+                          <Badge variant="outline" className="flex items-center gap-2">
+                            {territory.trend === 'urban' ? (
+                              <>
+                                <Building2 className="w-3 h-3 text-primary" />
+                                Tendência: Urbana (infra/cidade/tecnologia)
+                              </>
+                            ) : (
+                              <>
+                                <TreePine className="w-3 h-3 text-green-500" />
+                                Tendência: Rural (fertilidade/ alimentos)
+                              </>
+                            )}
+                          </Badge>
                         </div>
                       </CardContent>
                     </Card>
