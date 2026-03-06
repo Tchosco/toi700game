@@ -3004,6 +3004,7 @@ export type Database = {
           max_urban_ratio: number
           season_day: number
           tick_interval_hours: number
+          tick_number: number | null
           total_planet_land_km2: number
           total_planet_population: number
           total_ticks: number | null
@@ -3022,6 +3023,7 @@ export type Database = {
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
+          tick_number?: number | null
           total_planet_land_km2?: number
           total_planet_population?: number
           total_ticks?: number | null
@@ -3040,6 +3042,7 @@ export type Database = {
           max_urban_ratio?: number
           season_day?: number
           tick_interval_hours?: number
+          tick_number?: number | null
           total_planet_land_km2?: number
           total_planet_population?: number
           total_ticks?: number | null
@@ -3052,6 +3055,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_tick_lock: { Args: never; Returns: boolean }
       atomic_create_territory: {
         Args: {
           p_capital_name: string
@@ -3123,6 +3127,17 @@ export type Database = {
         }
         Returns: Json
       }
+      atomic_update_resource_balances: {
+        Args: {
+          p_energy: number
+          p_food: number
+          p_minerals: number
+          p_tech: number
+          p_territory_id: string
+          p_tick_number: number
+        }
+        Returns: undefined
+      }
       generate_populated_cells: {
         Args: { p_num_cells?: number; p_region_id: string }
         Returns: number
@@ -3155,6 +3170,7 @@ export type Database = {
           trades_executed: number
         }[]
       }
+      release_tick_lock: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
