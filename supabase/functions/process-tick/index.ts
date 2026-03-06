@@ -7,7 +7,570 @@ const corsHeaders = {
 
 type Supa = ReturnType<typeof createClient>;
 
-// ... existing code (all types and helpers unchanged) ...
+// ── Types ──────────────────────────────────────────────────
+
+interface Territory {
+  id: string;
+  stability: number | null;
+  level: string | null;
+  vocation: string | null;
+  pd_points: number;
+  pi_points: number;
+  capital_city_id: string | null;
+}
+
+interface CellRow {
+  id: string;
+  rural_population: number;
+  urban_population: number;
+  resource_food: number;
+  resource_energy: number;
+  resource_minerals: number;
+  resource_tech: number;
+  has_city: boolean;
+  is_urban_eligible: boolean;
+  cell_type: string;
+}
+
+interface ResourceBundle {
+  food: number;
+  energy: number;
+  minerals: number;
+  tech: number;
+}
+
+interface InfraMods {
+  foodMult: number;
+  energyMult: number;
+  mineralsMult: number;
+  techMult: number;
+  wasteReduction: number;
+}
+
+// ── Auth helper ────────────────────────────────────────────
+
+async function authenticateAdmin(req: Request, supabase: Supa) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { ok: false as const, status: 401, error: 'Missing authorization header' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    return { ok: false as const, status: 401, error: 'Invalid token' };
+  }
+
+  // Check admin role
+  const { data: roleData } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+    .maybeSingle();
+
+  if (!roleData) {
+    return { ok: false as const, status: 403, error: 'Apenas administradores podem executar ticks' };
+  }
+
+  return { ok: true as const, user };
+}
+
+// ── Config & tick number ───────────────────────────────────
+
+async function getConfigAndTick(supabase: Supa) {
+  const { data: config } = await supabase
+    .from('world_config')
+    .select('*')
+    .limit(1)
+    .single();
+
+  const currentTick = config?.total_ticks ?? 0;
+  const nextTickNumber = currentTick + 1;
+  const started_at = new Date().toISOString();
+
+  // Create tick log entry
+  await supabase.from('tick_logs').insert({
+    tick_number: nextTickNumber,
+    started_at,
+    status: 'running',
+  });
+
+  return { config, nextTickNumber, started_at };
+}
+
+// ── Construction queue (stub – table may not exist) ───────
+
+async function processConstructionQueue(supabase: Supa) {
+  // No construction_queue table exists yet – no-op
+}
+
+// ── Infrastructure maintenance (stub) ─────────────────────
+
+async function processInfrastructureMaintenance(supabase: Supa) {
+  // No infrastructure table exists yet – no-op
+}
+
+// ── Load enacted laws per territory ───────────────────────
+
+async function loadEnactedLawsByTerritory(supabase: Supa): Promise<Map<string, any[]>> {
+  const { data: laws } = await supabase
+    .from('laws')
+    .select('*')
+    .eq('status', 'enacted');
+
+  const map = new Map<string, any[]>();
+  for (const law of (laws || [])) {
+    const tid = law.territory_id;
+    if (!tid) continue;
+    if (!map.has(tid)) map.set(tid, []);
+    map.get(tid)!.push(law);
+  }
+  return map;
+}
+
+// ── Aggregate territory data from cells ───────────────────
+
+async function aggregateTerritory(supabase: Supa, territory_id: string) {
+  const { data: cells } = await supabase
+    .from('cells')
+    .select('id, rural_population, urban_population, resource_food, resource_energy, resource_minerals, resource_tech, has_city, is_urban_eligible, cell_type')
+    .eq('owner_territory_id', territory_id);
+
+  const rows = (cells || []) as CellRow[];
+  let ruralPop = 0;
+  let urbanPop = 0;
+  let cityCount = 0;
+
+  for (const c of rows) {
+    ruralPop += Number(c.rural_population || 0);
+    urbanPop += Number(c.urban_population || 0);
+    if (c.has_city) cityCount++;
+  }
+
+  return {
+    cells: rows,
+    ruralPop,
+    urbanPop,
+    totalPop: ruralPop + urbanPop,
+    cityCount,
+  };
+}
+
+async function applyAggregatesToTerritory(
+  supabase: Supa,
+  territory_id: string,
+  ruralPop: number,
+  urbanPop: number,
+  cellCount: number,
+  cityCount: number,
+) {
+  await supabase
+    .from('territories')
+    .update({
+      total_rural_population: ruralPop,
+      total_urban_population: urbanPop,
+    })
+    .eq('id', territory_id);
+}
+
+// ── Production from cells ─────────────────────────────────
+
+function computeProductionFromCells(
+  cells: CellRow[],
+  cityCount: number,
+  laws: any[],
+  stability: number,
+) {
+  let prodFood = 0;
+  let prodEnergy = 0;
+  let prodMinerals = 0;
+  let prodTech = 0;
+  let ruralBias = 0;
+  let urbanBias = 0;
+
+  const stabilityFactor = Math.max(0.3, stability / 100);
+
+  for (const c of cells) {
+    const food = Number(c.resource_food || 0);
+    const energy = Number(c.resource_energy || 0);
+    const minerals = Number(c.resource_minerals || 0);
+    const tech = Number(c.resource_tech || 0);
+    const pop = Number(c.rural_population || 0) + Number(c.urban_population || 0);
+    const popFactor = Math.min(1, pop / 100000);
+
+    prodFood += food * popFactor * stabilityFactor;
+    prodEnergy += energy * popFactor * stabilityFactor;
+    prodMinerals += minerals * popFactor * stabilityFactor;
+    prodTech += tech * popFactor * stabilityFactor;
+
+    if (c.has_city || c.is_urban_eligible) {
+      urbanBias += tech;
+    } else {
+      ruralBias += food;
+    }
+  }
+
+  // Law modifiers
+  for (const law of laws) {
+    const effects = law.positive_effects;
+    if (effects && typeof effects === 'object') {
+      prodFood *= 1 + (Number((effects as any).food_bonus) || 0) / 100;
+      prodEnergy *= 1 + (Number((effects as any).energy_bonus) || 0) / 100;
+      prodMinerals *= 1 + (Number((effects as any).minerals_bonus) || 0) / 100;
+      prodTech *= 1 + (Number((effects as any).tech_bonus) || 0) / 100;
+    }
+  }
+
+  // City bonus
+  prodTech += cityCount * 5;
+  prodEnergy += cityCount * 3;
+
+  return {
+    prodFood: Math.round(prodFood),
+    prodEnergy: Math.round(prodEnergy),
+    prodMinerals: Math.round(prodMinerals),
+    prodTech: Math.round(prodTech),
+    ruralBias,
+    urbanBias,
+  };
+}
+
+// ── Infrastructure modifiers (stub) ───────────────────────
+
+async function getInfrastructureModifiers(_supabase: Supa, _territory_id: string): Promise<InfraMods> {
+  return {
+    foodMult: 1,
+    energyMult: 1,
+    mineralsMult: 1,
+    techMult: 1,
+    wasteReduction: 0,
+  };
+}
+
+function applyInfraModifiers(
+  prod: ResourceBundle,
+  mods: { foodMult: number; energyMult: number; mineralsMult: number; techMult: number },
+): ResourceBundle {
+  return {
+    food: prod.food * mods.foodMult,
+    energy: prod.energy * mods.energyMult,
+    minerals: prod.minerals * mods.mineralsMult,
+    tech: prod.tech * mods.techMult,
+  };
+}
+
+// ── Warehouse capacity ────────────────────────────────────
+
+async function applyWarehouseCapacityWithInfra(
+  _supabase: Supa,
+  _territory_id: string,
+  _rb: any,
+  food: number,
+  energy: number,
+  minerals: number,
+  tech: number,
+  wasteReduction: number,
+) {
+  const cap = 10000; // base capacity per resource
+  const effectiveCap = cap * (1 + wasteReduction);
+  let overflowLost = 0;
+
+  if (food > effectiveCap) { overflowLost += food - effectiveCap; food = effectiveCap; }
+  if (energy > effectiveCap) { overflowLost += energy - effectiveCap; energy = effectiveCap; }
+  if (minerals > effectiveCap) { overflowLost += minerals - effectiveCap; minerals = effectiveCap; }
+  if (tech > effectiveCap) { overflowLost += tech - effectiveCap; tech = effectiveCap; }
+
+  return { food, energy, minerals, tech, overflowLost };
+}
+
+// ── Consumption ───────────────────────────────────────────
+
+function computeConsumption(
+  totalPop: number,
+  cityCount: number,
+  hasResearch: boolean,
+  level: string | null,
+) {
+  const popUnits = totalPop / 10000;
+  const foodConsumption = Math.round(popUnits * 2);
+  const energyConsumption = Math.round(popUnits * 1.5 + cityCount * 5);
+  const techConsumption = hasResearch ? Math.round(popUnits * 0.5 + 10) : 0;
+
+  return { foodConsumption, energyConsumption, techConsumption };
+}
+
+// ── Crises & clamp ────────────────────────────────────────
+
+async function handleCrisesAndClamp(
+  supabase: Supa,
+  territory_id: string,
+  res: ResourceBundle,
+) {
+  const crisisFood = res.food < 0;
+  const crisisEnergy = res.energy < 0;
+  const crisisMinerals = res.minerals < 0;
+  const crisisTech = res.tech < 0;
+
+  const crisisTypes: string[] = [];
+  if (crisisFood) crisisTypes.push('alimento');
+  if (crisisEnergy) crisisTypes.push('energia');
+  if (crisisMinerals) crisisTypes.push('minerais');
+  if (crisisTech) crisisTypes.push('tecnologia');
+
+  if (crisisTypes.length > 0) {
+    await supabase.from('event_logs').insert({
+      event_type: 'crisis',
+      territory_id,
+      title: `Crise de ${crisisTypes.join(', ')}`,
+      description: `O território está com déficit de ${crisisTypes.join(', ')}.`,
+    });
+  }
+
+  return {
+    food: Math.max(0, res.food),
+    energy: Math.max(0, res.energy),
+    minerals: Math.max(0, res.minerals),
+    tech: Math.max(0, res.tech),
+    crisisFood,
+    crisisEnergy,
+    crisisMinerals,
+    crisisTech,
+  };
+}
+
+// ── Cell growth ───────────────────────────────────────────
+
+async function updateCellGrowth(
+  supabase: Supa,
+  cells: CellRow[],
+  stability: number,
+  crisisFood: boolean,
+  crisisEnergy: boolean,
+) {
+  const stabilityFactor = stability / 100;
+  const crisisPenalty = (crisisFood ? -0.005 : 0) + (crisisEnergy ? -0.003 : 0);
+  const baseGrowth = 0.001 * stabilityFactor + crisisPenalty;
+
+  const updates: { id: string; rural_population: number; urban_population: number }[] = [];
+
+  for (const c of cells) {
+    const rural = Number(c.rural_population || 0);
+    const urban = Number(c.urban_population || 0);
+    const total = rural + urban;
+    if (total <= 0) continue;
+
+    const growthRate = Math.max(-0.01, baseGrowth + (Math.random() - 0.5) * 0.001);
+    const growth = Math.round(total * growthRate);
+
+    const urbanShare = c.has_city ? 0.7 : c.is_urban_eligible ? 0.4 : 0.2;
+    const urbanGrowth = Math.round(growth * urbanShare);
+    const ruralGrowth = growth - urbanGrowth;
+
+    updates.push({
+      id: c.id,
+      rural_population: Math.max(0, rural + ruralGrowth),
+      urban_population: Math.max(0, urban + urbanGrowth),
+    });
+  }
+
+  if (updates.length === 0) return;
+
+  const chunkSize = 100;
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    await (supabase as any).from('cells').upsert(chunk, { onConflict: 'id' });
+  }
+}
+
+// ── Rural/Urban biases ────────────────────────────────────
+
+async function applyRuralUrbanBiases(supabase: Supa, territory_id: string) {
+  const { data: cells } = await supabase
+    .from('cells')
+    .select('id, rural_population, urban_population, resource_food, resource_tech, has_city, is_urban_eligible')
+    .eq('owner_territory_id', territory_id);
+
+  if (!cells || cells.length === 0) return;
+
+  const updates: { id: string; rural_population: number; urban_population: number }[] = [];
+
+  for (const c of cells as any[]) {
+    const rural = Number(c.rural_population || 0);
+    const urban = Number(c.urban_population || 0);
+    const total = rural + urban;
+    if (total <= 0) continue;
+
+    const food = Number(c.resource_food || 0);
+    const tech = Number(c.resource_tech || 0);
+    const hasCity = !!c.has_city;
+    const urbanEligible = !!c.is_urban_eligible;
+
+    const ruralBias = Math.max(0, food);
+    const urbanBias = Math.max(0, tech) + (hasCity ? 30 : 0) + (urbanEligible ? 20 : 0);
+    const biasSum = ruralBias + urbanBias;
+    const ruralShare = biasSum > 0 ? ruralBias / biasSum : 0.5;
+
+    const randomFactor = 1 + (Math.random() - 0.5) * 0.02;
+    const devFactor = Math.min(1, (food + tech) / 300);
+    const growthRate = (0.001 + devFactor * 0.0005) * randomFactor;
+    const growth = Math.max(0, Math.round(total * growthRate));
+
+    const deltaRural = Math.round(growth * ruralShare);
+    const deltaUrban = growth - deltaRural;
+
+    updates.push({
+      id: c.id,
+      rural_population: rural + deltaRural,
+      urban_population: urban + deltaUrban,
+    });
+  }
+
+  if (updates.length === 0) return;
+
+  const chunkSize = 100;
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    await (supabase as any).from('cells').upsert(chunk, { onConflict: 'id' });
+  }
+}
+
+// ── Migration ─────────────────────────────────────────────
+
+async function applyMigration(
+  supabase: Supa,
+  territory_id: string,
+  urbanPop: number,
+  ruralPop: number,
+  totalPop: number,
+  surplusFood: number,
+  surplusEnergy: number,
+  hasResearch: boolean,
+  crisisFood: boolean,
+  crisisEnergy: boolean,
+) {
+  // Net migration based on conditions
+  let migrationNet = 0;
+
+  // Surplus attracts population
+  if (surplusFood > 100) migrationNet += Math.round(surplusFood * 0.01);
+  if (surplusEnergy > 100) migrationNet += Math.round(surplusEnergy * 0.005);
+  if (hasResearch) migrationNet += Math.round(totalPop * 0.0005);
+
+  // Crisis causes emigration
+  if (crisisFood) migrationNet -= Math.round(totalPop * 0.002);
+  if (crisisEnergy) migrationNet -= Math.round(totalPop * 0.001);
+
+  // Clamp migration
+  migrationNet = Math.max(-Math.round(totalPop * 0.01), Math.min(Math.round(totalPop * 0.01), migrationNet));
+
+  return { migrationNet };
+}
+
+// ── Stability ─────────────────────────────────────────────
+
+async function applyStability(
+  supabase: Supa,
+  territory_id: string,
+  currentStability: number,
+  surplusFood: number,
+  surplusEnergy: number,
+  crisisFood: boolean,
+  crisisEnergy: boolean,
+  ruralBias: number,
+  urbanBias: number,
+) {
+  let delta = 0;
+
+  // Surplus stabilises
+  if (surplusFood > 0) delta += 1;
+  if (surplusEnergy > 0) delta += 1;
+
+  // Crises destabilise
+  if (crisisFood) delta -= 3;
+  if (crisisEnergy) delta -= 2;
+
+  // Mean reversion to 50
+  delta += Math.round((50 - currentStability) * 0.05);
+
+  const newStability = Math.max(0, Math.min(100, currentStability + delta));
+
+  await supabase
+    .from('territories')
+    .update({ stability: newStability })
+    .eq('id', territory_id);
+
+  return newStability;
+}
+
+// ── Market processing ─────────────────────────────────────
+
+async function processMarket(supabase: Supa): Promise<number> {
+  // Attempt auto-matching of open orders
+  const { data: openSells } = await supabase
+    .from('market_listings')
+    .select('*')
+    .eq('listing_type', 'sell')
+    .in('status', ['open', 'partially_filled'])
+    .order('created_at', { ascending: true })
+    .limit(50);
+
+  let tradesExecuted = 0;
+
+  for (const sell of (openSells || []) as any[]) {
+    const { data: results } = await (supabase as any).rpc('match_market_order', {
+      p_listing_id: sell.id,
+      p_seller_user_id: sell.seller_user_id,
+      p_seller_territory_id: sell.seller_territory_id,
+      p_listing_type: sell.listing_type,
+      p_resource_type: sell.resource_type,
+      p_price_per_unit: sell.price_per_unit,
+      p_quantity: sell.quantity,
+      p_filled_quantity: sell.filled_quantity,
+    });
+
+    if (results && results.length > 0) {
+      tradesExecuted += results[0].trades_executed || 0;
+    }
+  }
+
+  return tradesExecuted;
+}
+
+// ── Finalize tick ─────────────────────────────────────────
+
+async function finalizeTick(
+  supabase: Supa,
+  tickNumber: number,
+  started_at: string,
+  summary: any,
+  config: any,
+) {
+  await supabase
+    .from('tick_logs')
+    .update({
+      completed_at: new Date().toISOString(),
+      status: 'completed',
+      territories_processed: summary.territories_processed,
+      cities_processed: summary.cities_processed,
+      events_generated: summary.events_generated,
+      summary,
+    })
+    .eq('tick_number', tickNumber);
+
+  await supabase
+    .from('world_config')
+    .update({
+      last_tick_at: new Date().toISOString(),
+      total_ticks: tickNumber,
+    })
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+}
+
+// ══════════════════════════════════════════════════════════
+// MAIN TICK LOGIC
+// ══════════════════════════════════════════════════════════
 
 async function runTick(req: Request) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -63,7 +626,7 @@ async function runTick(req: Request) {
       const mods = await getInfrastructureModifiers(supabase, territory_id);
       const prodMod = applyInfraModifiers(
         { food: prodFood, energy: prodEnergy, minerals: prodMinerals, tech: prodTech },
-        { foodMult: mods.foodMult, energyMult: mods.energyMult, mineralsMult: mods.mineralsMult, techMult: mods.techMult }
+        { foodMult: mods.foodMult, energyMult: mods.energyMult, mineralsMult: mods.mineralsMult, techMult: mods.techMult },
       );
 
       const { data: rb } = await supabase
@@ -105,7 +668,7 @@ async function runTick(req: Request) {
 
       await updateCellGrowth(supabase, cells, t.stability || 50, crisis.crisisFood, crisis.crisisEnergy);
 
-      // Aplicar viés rural/urbano por célula com aleatoriedade
+      // Aplicar viés rural/urbano por célula
       await applyRuralUrbanBiases(supabase, territory_id);
 
       const surplusFood = newFood - foodConsumption;
@@ -157,9 +720,9 @@ async function runTick(req: Request) {
     });
 
     await supabase
-      .from('planet_config')
-      .update({ tick_number: nextTickNumber })
-      .neq('id', '');
+      .from('world_config')
+      .update({ total_ticks: nextTickNumber })
+      .neq('id', '00000000-0000-0000-0000-000000000000');
 
     return {
       status: 200,
@@ -169,12 +732,12 @@ async function runTick(req: Request) {
     const msg = error instanceof Error ? error.message : 'Erro desconhecido';
     return { status: 500, body: { success: false, error: msg } };
   } finally {
-    // Always release lock
     await (supabase as any).rpc('release_tick_lock');
   }
 }
 
-// Entry point unchanged
+// ── Entry point ───────────────────────────────────────────
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -194,64 +757,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-
-async function applyRuralUrbanBiases(supabase: Supa, territory_id: string) {
-  // Buscar células do território com campos necessários
-  const { data: cells } = await supabase
-    .from('cells')
-    .select('id, rural_population, urban_population, resource_food, resource_tech, has_city, is_urban_eligible')
-    .eq('owner_territory_id', territory_id);
-
-  if (!cells || cells.length === 0) return;
-
-  const updates: { id: string; rural_population: number; urban_population: number }[] = [];
-
-  for (const c of cells as any[]) {
-    const id = c.id;
-    const rural = Number(c.rural_population || 0);
-    const urban = Number(c.urban_population || 0);
-    const total = rural + urban;
-    if (total <= 0) continue;
-
-    const food = Number(c.resource_food || 0);
-    const tech = Number(c.resource_tech || 0);
-    const hasCity = !!c.has_city;
-    const urbanEligible = !!c.is_urban_eligible;
-
-    // Viés rural/urbano: fertilidade favorece rural; infraestrutura favorece urbano
-    const ruralBias = Math.max(0, food);
-    const urbanBias = Math.max(0, tech) + (hasCity ? 30 : 0) + (urbanEligible ? 20 : 0);
-    const biasSum = ruralBias + urbanBias;
-    const ruralShare = biasSum > 0 ? ruralBias / biasSum : 0.5;
-
-    // Fator aleatório (±2%)
-    const randomFactor = 1 + (Math.random() - 0.5) * 0.02;
-
-    // Crescimento base (~0.1% por tick) ajustado pelo "desenvolvimento" (food+tech)
-    const devFactor = Math.min(1, (food + tech) / 300);
-    const growthRate = (0.001 + devFactor * 0.0005) * randomFactor;
-    const growth = Math.max(0, Math.round(total * growthRate));
-
-    const deltaRural = Math.round(growth * ruralShare);
-    const deltaUrban = growth - deltaRural;
-
-    updates.push({
-      id,
-      rural_population: rural + deltaRural,
-      urban_population: urban + deltaUrban,
-    });
-  }
-
-  if (updates.length === 0) return;
-
-  // Upsert em blocos
-  const chunkSize = 100;
-  for (let i = 0; i < updates.length; i += chunkSize) {
-    const chunk = updates.slice(i, i + chunkSize);
-    const { error } = await supabase.from('cells').upsert(chunk, { onConflict: 'id' });
-    if (error) {
-      console.error('Erro ao aplicar viés rural/urbano:', error.message);
-      break;
-    }
-  }
-}
