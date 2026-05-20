@@ -73,7 +73,6 @@ Deno.serve(async (req) => {
         level: 'colony',
         is_neutral: false,
         stability: 50,
-        treasury: 1000,
         total_rural_population: 0,
         total_urban_population: 0,
         created_at: now,
@@ -89,6 +88,11 @@ Deno.serve(async (req) => {
       );
     }
     territoryId = territoryInsert[0].id;
+
+    // Seed treasury in the owner-restricted treasury table
+    await supabase
+      .from('territory_treasuries')
+      .insert({ territory_id: territoryId, balance: 1000 });
 
     // 2) Escolher célula livre top 40% por habitability
     const { count: freeCount } = await supabase

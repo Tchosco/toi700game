@@ -1960,7 +1960,6 @@ export type Database = {
           style: Database["public"]["Enums"]["territory_style"]
           total_rural_population: number
           total_urban_population: number
-          treasury: number
           updated_at: string
           vocation: string | null
         }
@@ -1990,7 +1989,6 @@ export type Database = {
           style?: Database["public"]["Enums"]["territory_style"]
           total_rural_population?: number
           total_urban_population?: number
-          treasury?: number
           updated_at?: string
           vocation?: string | null
         }
@@ -2020,7 +2018,6 @@ export type Database = {
           style?: Database["public"]["Enums"]["territory_style"]
           total_rural_population?: number
           total_urban_population?: number
-          treasury?: number
           updated_at?: string
           vocation?: string | null
         }
@@ -2375,6 +2372,32 @@ export type Database = {
             columns: ["war_id"]
             isOneToOne: false
             referencedRelation: "wars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territory_treasuries: {
+        Row: {
+          balance: number
+          territory_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          territory_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          territory_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territory_treasuries_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: true
+            referencedRelation: "territories"
             referencedColumns: ["id"]
           },
         ]

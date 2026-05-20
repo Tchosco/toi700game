@@ -115,14 +115,21 @@ export default function WarehousePage() {
 
     const { data } = await supabase
       .from('territories')
-      .select('id, name, stability, treasury, total_rural_population, total_urban_population')
+      .select('id, name, stability, total_rural_population, total_urban_population')
       .eq('owner_id', user.id)
       .eq('status', 'active')
       .order('name');
 
     if (data && data.length > 0) {
-      setTerritories(data);
-      setSelectedTerritory(data[0].id);
+      const ids = data.map((t: any) => t.id);
+      const { data: treasuries } = await (supabase as any)
+        .from('territory_treasuries')
+        .select('territory_id, balance')
+        .in('territory_id', ids) as { data: { territory_id: string; balance: number }[] | null };
+      const balanceMap = new Map((treasuries ?? []).map((b) => [b.territory_id, Number(b.balance)]));
+      const withTreasury = data.map((t: any) => ({ ...t, treasury: balanceMap.get(t.id) ?? 0 }));
+      setTerritories(withTreasury);
+      setSelectedTerritory(withTreasury[0].id);
     }
     setLoading(false);
   }
