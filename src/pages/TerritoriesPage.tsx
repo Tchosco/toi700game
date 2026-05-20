@@ -89,7 +89,7 @@ export default function TerritoriesPage() {
     // Fetch profiles for owners
     const ownerIds = territoriesData?.map(t => t.owner_id).filter(Boolean) || [];
     const { data: profiles } = await supabase
-      .from('profiles')
+      .from('public_profiles' as any)
       .select('id, username')
       .in('id', ownerIds);
 

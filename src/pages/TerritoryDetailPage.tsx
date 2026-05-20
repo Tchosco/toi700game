@@ -137,7 +137,7 @@ export default function TerritoryDetailPage() {
 
     // Fetch owner profile
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('public_profiles' as any)
       .select('username')
       .eq('id', territoryData.owner_id)
       .maybeSingle();
