@@ -136,11 +136,11 @@ export default function TerritoryDetailPage() {
     }
 
     // Fetch owner profile
-    const { data: profile } = await supabase
-      .from('public_profiles' as any)
+    const { data: profile } = await (supabase as any)
+      .from('public_profiles')
       .select('username')
       .eq('id', territoryData.owner_id)
-      .maybeSingle();
+      .maybeSingle() as { data: { username: string } | null };
 
     // Fetch region
     const { data: region } = await supabase
