@@ -88,10 +88,10 @@ export default function TerritoriesPage() {
 
     // Fetch profiles for owners
     const ownerIds = territoriesData?.map(t => t.owner_id).filter(Boolean) || [];
-    const { data: profiles } = await supabase
-      .from('profiles')
+    const { data: profiles } = await (supabase as any)
+      .from('public_profiles')
       .select('id, username')
-      .in('id', ownerIds);
+      .in('id', ownerIds) as { data: { id: string; username: string }[] | null };
 
     // Fetch city counts per territory
     const territoryIds = territoriesData?.map(t => t.id) || [];
