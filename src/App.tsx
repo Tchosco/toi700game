@@ -19,6 +19,7 @@ import PopulationPage from "./pages/PopulationPage";
 import ConstitutionPage from "./pages/ConstitutionPage";
 import ParliamentPage from "./pages/ParliamentPage";
 import SupremeCourtPage from "./pages/SupremeCourtPage";
+import RegimePage from "./pages/RegimePage";
 import NewsPortalPage from "./pages/NewsPortalPage";
 import NewsArticlePage from "./pages/NewsArticlePage";
 import MyNewspaperPage from "./pages/MyNewspaperPage";
@@ -91,6 +92,7 @@ const App = () => (
               <Route path="/constituicao" element={<ConstitutionPage />} />
               <Route path="/parlamento" element={<ParliamentPage />} />
               <Route path="/suprema-corte" element={<SupremeCourtPage />} />
+              <Route path="/regime" element={<RegimePage />} />
               <Route path="/noticias" element={<NewsPortalPage />} />
               <Route path="/noticias/:id" element={<NewsArticlePage />} />
               <Route path="/meu-jornal" element={<MyNewspaperPage />} />
