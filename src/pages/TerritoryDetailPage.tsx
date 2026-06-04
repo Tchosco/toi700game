@@ -22,6 +22,8 @@ type GovernmentType = Database['public']['Enums']['government_type'];
 interface TerritoryDetails {
   id: string;
   name: string;
+  displayName: string | null;
+  ownerId: string;
   governorName: string;
   region: string;
   capital: string;
@@ -206,6 +208,8 @@ export default function TerritoryDetailPage() {
     setTerritory({
       id: territoryData.id,
       name: territoryData.name,
+      displayName: (territoryData as any).display_name ?? null,
+      ownerId: territoryData.owner_id,
       governorName: profile?.username || 'Desconhecido',
       region: region?.name || 'N/A',
       capital: capitalCity?.name || 'N/A',
