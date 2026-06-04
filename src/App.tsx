@@ -87,6 +87,7 @@ const App = () => (
               <Route path="/populacao" element={<PopulationPage />} />
               <Route path="/constituicao" element={<ConstitutionPage />} />
               <Route path="/parlamento" element={<ParliamentPage />} />
+              <Route path="/suprema-corte" element={<SupremeCourtPage />} />
               <Route path="/blocos" element={<BlocsPage />} />
               <Route path="/leis" element={<StateLawsPage />} />
               <Route path="/leis/criar" element={<CreateLawPage />} />
