@@ -330,6 +330,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cells_province_fk"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cells_region_id_fkey"
             columns: ["region_id"]
             isOneToOne: false
@@ -1833,6 +1840,51 @@ export type Database = {
           },
           {
             foreignKeyName: "project_participants_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provinces: {
+        Row: {
+          capital_cell_id: string | null
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          territory_id: string
+          updated_at: string
+        }
+        Insert: {
+          capital_cell_id?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          territory_id: string
+          updated_at?: string
+        }
+        Update: {
+          capital_cell_id?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          territory_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provinces_capital_cell_id_fkey"
+            columns: ["capital_cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provinces_territory_id_fkey"
             columns: ["territory_id"]
             isOneToOne: false
             referencedRelation: "territories"
@@ -3584,6 +3636,10 @@ export type Database = {
     }
     Functions: {
       acquire_tick_lock: { Args: never; Returns: boolean }
+      assign_cell_to_province: {
+        Args: { p_cell_id: string; p_province_id: string }
+        Returns: undefined
+      }
       atomic_create_territory: {
         Args: {
           p_capital_name: string
@@ -3675,6 +3731,11 @@ export type Database = {
         Returns: undefined
       }
       check_law_conflicts: { Args: { p_law_id: string }; Returns: Json }
+      create_province: {
+        Args: { p_color?: string; p_name: string; p_territory_id: string }
+        Returns: string
+      }
+      delete_province: { Args: { p_province_id: string }; Returns: undefined }
       execute_regime_transition: {
         Args: { p_transition_id: string }
         Returns: undefined
@@ -3779,6 +3840,10 @@ export type Database = {
       release_tick_lock: { Args: never; Returns: undefined }
       rename_cell: {
         Args: { p_cell_id: string; p_name: string }
+        Returns: undefined
+      }
+      rename_province: {
+        Args: { p_name: string; p_province_id: string }
         Returns: undefined
       }
       rename_territory: {
