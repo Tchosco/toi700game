@@ -517,6 +517,13 @@ export default function TerritoryDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        <ProvincesPanel
+          territoryId={territory.id}
+          ownerId={territory.ownerId}
+          currentDisplayName={territory.displayName}
+          currentName={territory.name}
+        />
       </div>
     </Layout>
   );
