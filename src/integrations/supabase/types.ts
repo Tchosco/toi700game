@@ -215,6 +215,8 @@ export type Database = {
           explored_by: string | null
           focus_changed_at: string | null
           focus_penalty_until: string | null
+          grid_x: number | null
+          grid_y: number | null
           has_city: boolean
           id: string
           is_urban_eligible: boolean
@@ -250,6 +252,8 @@ export type Database = {
           explored_by?: string | null
           focus_changed_at?: string | null
           focus_penalty_until?: string | null
+          grid_x?: number | null
+          grid_y?: number | null
           has_city?: boolean
           id?: string
           is_urban_eligible?: boolean
@@ -285,6 +289,8 @@ export type Database = {
           explored_by?: string | null
           focus_changed_at?: string | null
           focus_penalty_until?: string | null
+          grid_x?: number | null
+          grid_y?: number | null
           has_city?: boolean
           id?: string
           is_urban_eligible?: boolean
@@ -3816,7 +3822,7 @@ export type Database = {
       }
       merge_cells: {
         Args: { p_absorbed_cell_id: string; p_master_cell_id: string }
-        Returns: undefined
+        Returns: Json
       }
       open_planetary_vote: {
         Args: {

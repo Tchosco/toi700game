@@ -19,6 +19,8 @@ interface Cell {
   display_name: string | null;
   area_km2: number | null;
   merged_into_cell_id: string | null;
+  grid_x: number | null;
+  grid_y: number | null;
 }
 interface Region { id: string; name: string; difficulty: string | null; }
 interface Territory { id: string; name: string; government_type: string; owner_id: string; }
@@ -62,15 +64,21 @@ function hashColor(id: string | null | undefined, fallback = "hsl(var(--muted))"
   return `hsl(${h % 360} 65% 50%)`;
 }
 
-// Deterministic point inside a bbox from a cell id
-function pointForCell(id: string, bbox: [number, number, number, number]) {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 131 + id.charCodeAt(i)) >>> 0;
+// Position cell using true grid coords inside the region's bbox
+function pointForCell(cell: Cell, bbox: [number, number, number, number], side: number) {
   const [x1, y1, x2, y2] = bbox;
-  // Shrink bbox by 8px padding
-  const px = x1 + 10 + ((h % 1000) / 1000) * Math.max(1, x2 - x1 - 20);
-  const py = y1 + 10 + (((h >>> 10) % 1000) / 1000) * Math.max(1, y2 - y1 - 20);
-  return { x: px, y: py };
+  const padX = 12;
+  const padY = 12;
+  const innerW = Math.max(1, x2 - x1 - padX * 2);
+  const innerH = Math.max(1, y2 - y1 - padY * 2);
+  const gx = cell.grid_x ?? 0;
+  const gy = cell.grid_y ?? 0;
+  const stepX = innerW / Math.max(1, side);
+  const stepY = innerH / Math.max(1, side);
+  return {
+    x: x1 + padX + stepX * (gx + 0.5),
+    y: y1 + padY + stepY * (gy + 0.5),
+  };
 }
 
 export default function InteractiveMapPage() {
@@ -89,7 +97,7 @@ export default function InteractiveMapPage() {
     (async () => {
       const [r, c, t, m, b, p] = await Promise.all([
         supabase.from("regions").select("id,name,difficulty").eq("is_visible", true),
-        supabase.from("cells").select("id,region_id,owner_territory_id,status,cell_type,display_name,area_km2,merged_into_cell_id"),
+        supabase.from("cells").select("id,region_id,owner_territory_id,status,cell_type,display_name,area_km2,merged_into_cell_id,grid_x,grid_y"),
         supabase.from("territories").select("id,name,government_type,owner_id").eq("status", "active"),
         supabase.from("bloc_memberships").select("territory_id,bloc_id").eq("status", "active"),
         supabase.from("geopolitical_blocs").select("id,name"),
@@ -279,11 +287,13 @@ export default function InteractiveMapPage() {
                   })}
 
                   {/* Cells (only when a region is selected) */}
-                  {selectedShape && selectedCells.map(cell => {
-                    const { x, y } = pointForCell(cell.id, selectedShape.bbox);
-                    const { color, label } = colorForCell(cell);
-                    const radius = cell.area_km2 ? Math.max(3, Math.min(7, Math.sqrt(cell.area_km2) / 12)) : 4;
-                    return (
+                  {selectedShape && (() => {
+                    const side = Math.max(1, Math.ceil(Math.sqrt(selectedCells.length)));
+                    return selectedCells.map(cell => {
+                      const { x, y } = pointForCell(cell, selectedShape.bbox, side);
+                      const { color, label } = colorForCell(cell);
+                      const radius = cell.area_km2 ? Math.max(3, Math.min(7, Math.sqrt(cell.area_km2) / 12)) : 4;
+                      return (
                       <Tooltip key={cell.id}>
                         <TooltipTrigger asChild>
                           <Link to={`/celulas/${cell.id}`}>
@@ -312,7 +322,8 @@ export default function InteractiveMapPage() {
                         </TooltipContent>
                       </Tooltip>
                     );
-                  })}
+                    });
+                  })()}
                 </svg>
               )}
             </CardContent>
