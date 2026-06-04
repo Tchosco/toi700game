@@ -322,7 +322,8 @@ export default function InteractiveMapPage() {
                         </TooltipContent>
                       </Tooltip>
                     );
-                  })}
+                    });
+                  })()}
                 </svg>
               )}
             </CardContent>
