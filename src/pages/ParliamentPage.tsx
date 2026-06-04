@@ -60,7 +60,39 @@ export default function ParliamentPage() {
   const [voteReason, setVoteReason] = useState('');
   const [voting, setVoting] = useState(false);
 
-  useEffect(() => {
+  // Propose vote
+  const [propTitle, setPropTitle] = useState('');
+  const [propDesc, setPropDesc] = useState('');
+  const [propType, setPropType] = useState<string>('law');
+  const [propSubject, setPropSubject] = useState('');
+  const [propDuration, setPropDuration] = useState(5);
+  const [propOpen, setPropOpen] = useState(false);
+  const [proposing, setProposing] = useState(false);
+
+  const handlePropose = async () => {
+    if (!propTitle.trim()) { toast.error('Título obrigatório'); return; }
+    setProposing(true);
+    const { error } = await supabase.rpc('open_planetary_vote', {
+      _title: propTitle,
+      _description: propDesc,
+      _vote_type: propType as any,
+      _subject_id: propSubject || null,
+      _duration_days: propDuration,
+    });
+    setProposing(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Votação aberta');
+    setPropOpen(false); setPropTitle(''); setPropDesc(''); setPropSubject('');
+    fetchData();
+  };
+
+  const handleFinalize = async (id: string) => {
+    const { error } = await supabase.rpc('finalize_parliamentary_vote', { _vote_id: id });
+    if (error) { toast.error(error.message); return; }
+    toast.success('Votação encerrada');
+    fetchData();
+  };
+
     fetchData();
   }, [user]);
 
