@@ -18,6 +18,7 @@ import DiplomacyPage from "./pages/DiplomacyPage";
 import PopulationPage from "./pages/PopulationPage";
 import ConstitutionPage from "./pages/ConstitutionPage";
 import ParliamentPage from "./pages/ParliamentPage";
+import SupremeCourtPage from "./pages/SupremeCourtPage";
 import BlocsPage from "./pages/BlocsPage";
 import StateLawsPage from "./pages/StateLawsPage";
 import CreateLawPage from "./pages/CreateLawPage";
