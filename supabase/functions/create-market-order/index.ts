@@ -122,6 +122,21 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Verify the authenticated user owns this territory
+        const { data: ownerCheck } = await supabase
+          .from('territories')
+          .select('id')
+          .eq('id', territory_id)
+          .eq('owner_id', user.id)
+          .maybeSingle();
+
+        if (!ownerCheck) {
+          return new Response(JSON.stringify({ error: 'You do not own this territory' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
         const { data: resourceBalance } = await supabase
           .from('resource_balances')
           .select('*')
