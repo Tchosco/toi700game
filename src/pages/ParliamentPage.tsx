@@ -93,6 +93,7 @@ export default function ParliamentPage() {
     fetchData();
   };
 
+  useEffect(() => {
     fetchData();
   }, [user]);
 
