@@ -119,21 +119,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Check user has token_city
-    const { data: userTokens, error: tokensError } = await supabase
-      .from('user_tokens')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (tokensError || !userTokens || userTokens.city_tokens < 1) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Você não possui tokens de cidade suficientes' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    // 4. Get default city profile if not provided
+    // 3. Get default city profile if not provided
     let cityProfileId = profile_id;
     if (!cityProfileId) {
       const { data: defaultProfile } = await supabase
@@ -142,24 +128,22 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: true })
         .limit(1)
         .single();
-      
+
       cityProfileId = defaultProfile?.id;
     }
 
-    // 5. Deduct token
-    const { error: deductError } = await supabase
-      .from('user_tokens')
-      .update({ 
-        city_tokens: userTokens.city_tokens - 1,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.id);
+    // 4. Atomically deduct a city token (race-condition safe)
+    const { data: deductRes, error: deductError } = await supabase.rpc('atomic_deduct_token', {
+      p_user_id: user.id,
+      p_token_type: 'city',
+      p_amount: 1,
+    });
 
-    if (deductError) {
-      console.error('Error deducting token:', deductError);
+    if (deductError || !deductRes?.success) {
+      console.error('Error deducting token:', deductError || deductRes?.error);
       return new Response(
-        JSON.stringify({ success: false, error: 'Erro ao deduzir token' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ success: false, error: deductRes?.error || 'Você não possui tokens de cidade suficientes' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
