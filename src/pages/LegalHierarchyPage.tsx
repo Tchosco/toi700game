@@ -17,6 +17,7 @@ import {
   FileText
 } from 'lucide-react';
 
+interface LawConflict { superior_law_name: string; level: string; reason: string }
 interface Law {
   id: string;
   name: string;
@@ -28,6 +29,7 @@ interface Law {
   enacted_at: string;
   population_sympathy: number;
   population_repulsion: number;
+  legal_conflicts?: LawConflict[];
   territory?: { name: string };
   geopolitical_blocs?: { name: string };
 }
@@ -95,22 +97,33 @@ export default function LegalHierarchyPage() {
   const nationalLaws = laws.filter(l => l.legal_level === 'national');
 
   const renderLawCard = (law: Law) => {
-    const levelInfo = HIERARCHY_LEVELS.find(h => h.level === law.legal_level);
-    
+    const hasConflict = Array.isArray(law.legal_conflicts) && law.legal_conflicts.length > 0;
     return (
-      <Card key={law.id} className="glass-card">
+      <Card key={law.id} className={`glass-card ${hasConflict ? 'border-red-500/50' : ''}`}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-medium">{law.name}</h3>
                 {law.is_constitution && (
                   <Badge variant="outline" className="text-purple-500 border-purple-500">
                     Constituição
                   </Badge>
                 )}
+                {hasConflict && (
+                  <Badge variant="destructive" className="gap-1" title={law.legal_conflicts!.map(c => `${c.superior_law_name}: ${c.reason}`).join(' | ')}>
+                    <AlertTriangle className="h-3 w-3" /> Inconstitucional
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">{law.description}</p>
+              {hasConflict && (
+                <ul className="mt-2 text-xs text-red-500 space-y-0.5">
+                  {law.legal_conflicts!.map((c, i) => (
+                    <li key={i}>• Conflito com <strong>{c.superior_law_name}</strong> ({c.level}): {c.reason}</li>
+                  ))}
+                </ul>
+              )}
             </div>
             <Badge variant="outline">{law.category}</Badge>
           </div>
