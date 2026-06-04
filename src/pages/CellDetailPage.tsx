@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, MapPin, TreePine, Building2, Zap, Pickaxe, Wheat, FlaskConical, Factory, ShoppingCart } from "lucide-react";
+import { CellAdminPanel } from "@/components/cell-map/CellAdminPanel";
 
 const RURAL_FOCUSES = [
   { value: "agricultural", label: "Agrícola", icon: Wheat, description: "+30% alimentos", color: "text-green-500" },
@@ -283,6 +284,20 @@ export default function CellDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        {cell.owner_territory_id && (
+          <CellAdminPanel
+            cellId={cell.id}
+            ownerTerritoryId={cell.owner_territory_id}
+            currentProvinceId={(cell as any).province_id ?? null}
+            currentDisplayName={(cell as any).display_name ?? null}
+            currentAreaKm2={cell.area_km2}
+            regionId={cell.region_id ?? null}
+            mergedIntoCellId={(cell as any).merged_into_cell_id ?? null}
+            isOwner={!!isOwner}
+            onChanged={() => queryClient.invalidateQueries({ queryKey: ["cell-detail", id] })}
+          />
+        )}
       </div>
     </Layout>
   );

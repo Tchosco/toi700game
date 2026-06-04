@@ -12,6 +12,7 @@ import {
   Calendar, History, Globe, Loader2
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
+import { ProvincesPanel } from '@/components/territory/ProvincesPanel';
 
 type TerritoryStatus = Database['public']['Enums']['territory_status'];
 type TerritoryLevel = Database['public']['Enums']['territory_level'];
