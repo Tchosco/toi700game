@@ -133,13 +133,10 @@ Deno.serve(async (req) => {
     if (rpcError) {
       console.error('[create-territory] RPC error:', rpcError);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Erro no banco de dados: ${rpcError.message}`,
-          code: rpcError.code || 'RPC_ERROR',
-          table: 'atomic_create_territory',
-          details: rpcError.details || null,
-          hint: rpcError.hint || null
+        JSON.stringify({
+          success: false,
+          error: 'Erro ao criar território. Tente novamente.',
+          code: 'RPC_ERROR'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
