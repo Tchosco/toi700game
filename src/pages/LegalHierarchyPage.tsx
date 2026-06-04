@@ -17,6 +17,7 @@ import {
   FileText
 } from 'lucide-react';
 
+interface LawConflict { superior_law_name: string; level: string; reason: string }
 interface Law {
   id: string;
   name: string;
@@ -28,6 +29,7 @@ interface Law {
   enacted_at: string;
   population_sympathy: number;
   population_repulsion: number;
+  legal_conflicts?: LawConflict[];
   territory?: { name: string };
   geopolitical_blocs?: { name: string };
 }
