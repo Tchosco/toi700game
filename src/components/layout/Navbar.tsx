@@ -17,6 +17,7 @@ const navLinks = [
   { to: '/celulas', label: 'Células', icon: Grid3X3 },
   { to: '/populacao', label: 'População', icon: Users },
   { to: '/mercado', label: 'Mercado', icon: TrendingUp },
+  { to: '/noticias', label: 'Notícias', icon: Newspaper },
 ];
 
 const legalLinks = [
