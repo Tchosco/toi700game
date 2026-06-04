@@ -379,6 +379,12 @@ export default function ParliamentPage() {
                         <span>Encerra: {new Date(vote.voting_ends_at).toLocaleString('pt-BR')}</span>
                       </div>
 
+                      <div className="flex gap-2">
+                      {new Date(vote.voting_ends_at) < new Date() && (
+                        <Button variant="outline" size="sm" onClick={() => handleFinalize(vote.id)}>
+                          Apurar
+                        </Button>
+                      )}
                       {user && myTerritories.length > 0 && (
                         <Dialog>
                           <DialogTrigger asChild>
