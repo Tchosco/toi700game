@@ -50,6 +50,41 @@ export type Database = {
         }
         Relationships: []
       }
+      amendment_votes: {
+        Row: {
+          amendment_id: string
+          created_at: string
+          id: string
+          vote: string
+          voter_territory_id: string
+          voter_user_id: string
+        }
+        Insert: {
+          amendment_id: string
+          created_at?: string
+          id?: string
+          vote: string
+          voter_territory_id: string
+          voter_user_id: string
+        }
+        Update: {
+          amendment_id?: string
+          created_at?: string
+          id?: string
+          vote?: string
+          voter_territory_id?: string
+          voter_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amendment_votes_amendment_id_fkey"
+            columns: ["amendment_id"]
+            isOneToOne: false
+            referencedRelation: "constitutional_amendments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bloc_memberships: {
         Row: {
           bloc_id: string
@@ -366,6 +401,63 @@ export type Database = {
           maintenance_cost_per_tick?: number
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      constitutional_amendments: {
+        Row: {
+          applied_at: string | null
+          approved_at: string | null
+          created_at: string
+          id: string
+          proposed_text: string
+          proposer_territory_id: string | null
+          proposer_user_id: string
+          rationale: string
+          status: string
+          target_section: string | null
+          title: string
+          updated_at: string
+          votes_abstain: number
+          votes_no: number
+          votes_yes: number
+          voting_ends_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          proposed_text: string
+          proposer_territory_id?: string | null
+          proposer_user_id: string
+          rationale: string
+          status?: string
+          target_section?: string | null
+          title: string
+          updated_at?: string
+          votes_abstain?: number
+          votes_no?: number
+          votes_yes?: number
+          voting_ends_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          proposed_text?: string
+          proposer_territory_id?: string | null
+          proposer_user_id?: string
+          rationale?: string
+          status?: string
+          target_section?: string | null
+          title?: string
+          updated_at?: string
+          votes_abstain?: number
+          votes_no?: number
+          votes_yes?: number
+          voting_ends_at?: string
         }
         Relationships: []
       }
@@ -3161,6 +3253,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      cast_amendment_vote: {
+        Args: { p_amendment_id: string; p_vote: string }
+        Returns: Json
+      }
+      check_law_conflicts: { Args: { p_law_id: string }; Returns: Json }
+      finalize_amendment: { Args: { p_amendment_id: string }; Returns: Json }
       generate_populated_cells: {
         Args: { p_num_cells?: number; p_region_id: string }
         Returns: number
@@ -3201,6 +3299,15 @@ export type Database = {
           remaining_quantity: number
           trades_executed: number
         }[]
+      }
+      propose_amendment: {
+        Args: {
+          p_proposed_text: string
+          p_rationale: string
+          p_target_section?: string
+          p_title: string
+        }
+        Returns: Json
       }
       release_tick_lock: { Args: never; Returns: undefined }
     }
