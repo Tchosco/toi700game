@@ -91,6 +91,9 @@ const App = () => (
               <Route path="/constituicao" element={<ConstitutionPage />} />
               <Route path="/parlamento" element={<ParliamentPage />} />
               <Route path="/suprema-corte" element={<SupremeCourtPage />} />
+              <Route path="/noticias" element={<NewsPortalPage />} />
+              <Route path="/noticias/:id" element={<NewsArticlePage />} />
+              <Route path="/meu-jornal" element={<MyNewspaperPage />} />
               <Route path="/blocos" element={<BlocsPage />} />
               <Route path="/leis" element={<StateLawsPage />} />
               <Route path="/leis/criar" element={<CreateLawPage />} />
