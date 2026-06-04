@@ -459,6 +459,7 @@ export default function ParliamentPage() {
                           </DialogContent>
                         </Dialog>
                       )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
