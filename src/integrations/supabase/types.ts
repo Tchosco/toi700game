@@ -2417,15 +2417,18 @@ export type Database = {
           capital_city_id: string | null
           created_at: string
           demonym: string | null
+          development_level: number
           economy_rating: number
           flag_url: string | null
           government_type: Database["public"]["Enums"]["government_type"]
           id: string
           is_neutral: boolean
+          is_npc: boolean
           level: Database["public"]["Enums"]["territory_level"]
           lore: string | null
           motto: string | null
           name: string
+          npc_description: string | null
           official_color: string | null
           owner_id: string | null
           pd_points: number
@@ -2446,15 +2449,18 @@ export type Database = {
           capital_city_id?: string | null
           created_at?: string
           demonym?: string | null
+          development_level?: number
           economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
           id?: string
           is_neutral?: boolean
+          is_npc?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
           motto?: string | null
           name: string
+          npc_description?: string | null
           official_color?: string | null
           owner_id?: string | null
           pd_points?: number
@@ -2475,15 +2481,18 @@ export type Database = {
           capital_city_id?: string | null
           created_at?: string
           demonym?: string | null
+          development_level?: number
           economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
           id?: string
           is_neutral?: boolean
+          is_npc?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
           motto?: string | null
           name?: string
+          npc_description?: string | null
           official_color?: string | null
           owner_id?: string | null
           pd_points?: number
