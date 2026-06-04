@@ -97,6 +97,23 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Validate requested cells belong to the target territory
+      const requestData = request as TradeSide;
+      if (requestData.cells?.length) {
+        const { data: reqCells } = await supabase
+          .from('cells')
+          .select('id, owner_territory_id')
+          .in('id', requestData.cells);
+        for (const c of reqCells || []) {
+          if (c.owner_territory_id !== toTerritory.id) {
+            return new Response(JSON.stringify({ error: 'You can only request cells owned by the trading partner' }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+
       const { data: deal, error: dealError } = await supabase
         .from('trade_deals')
         .insert({
