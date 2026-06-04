@@ -210,6 +210,7 @@ export type Database = {
           colonized_at: string | null
           colonized_by: string | null
           created_at: string
+          display_name: string | null
           explored_at: string | null
           explored_by: string | null
           focus_changed_at: string | null
@@ -217,8 +218,10 @@ export type Database = {
           has_city: boolean
           id: string
           is_urban_eligible: boolean
+          merged_into_cell_id: string | null
           owner_territory_id: string | null
           population_density: number
+          province_id: string | null
           region_id: string | null
           resource_energy: number
           resource_food: number
@@ -242,6 +245,7 @@ export type Database = {
           colonized_at?: string | null
           colonized_by?: string | null
           created_at?: string
+          display_name?: string | null
           explored_at?: string | null
           explored_by?: string | null
           focus_changed_at?: string | null
@@ -249,8 +253,10 @@ export type Database = {
           has_city?: boolean
           id?: string
           is_urban_eligible?: boolean
+          merged_into_cell_id?: string | null
           owner_territory_id?: string | null
           population_density?: number
+          province_id?: string | null
           region_id?: string | null
           resource_energy?: number
           resource_food?: number
@@ -274,6 +280,7 @@ export type Database = {
           colonized_at?: string | null
           colonized_by?: string | null
           created_at?: string
+          display_name?: string | null
           explored_at?: string | null
           explored_by?: string | null
           focus_changed_at?: string | null
@@ -281,8 +288,10 @@ export type Database = {
           has_city?: boolean
           id?: string
           is_urban_eligible?: boolean
+          merged_into_cell_id?: string | null
           owner_territory_id?: string | null
           population_density?: number
+          province_id?: string | null
           region_id?: string | null
           resource_energy?: number
           resource_food?: number
@@ -304,6 +313,13 @@ export type Database = {
             columns: ["city_id"]
             isOneToOne: false
             referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cells_merged_into_cell_id_fkey"
+            columns: ["merged_into_cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
             referencedColumns: ["id"]
           },
           {
@@ -2418,6 +2434,7 @@ export type Database = {
           created_at: string
           demonym: string | null
           development_level: number
+          display_name: string | null
           economy_rating: number
           flag_url: string | null
           government_type: Database["public"]["Enums"]["government_type"]
@@ -2450,6 +2467,7 @@ export type Database = {
           created_at?: string
           demonym?: string | null
           development_level?: number
+          display_name?: string | null
           economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
@@ -2482,6 +2500,7 @@ export type Database = {
           created_at?: string
           demonym?: string | null
           development_level?: number
+          display_name?: string | null
           economy_rating?: number
           flag_url?: string | null
           government_type?: Database["public"]["Enums"]["government_type"]
@@ -3734,6 +3753,10 @@ export type Database = {
           trades_executed: number
         }[]
       }
+      merge_cells: {
+        Args: { p_absorbed_cell_id: string; p_master_cell_id: string }
+        Returns: undefined
+      }
       open_planetary_vote: {
         Args: {
           _description: string
@@ -3754,6 +3777,15 @@ export type Database = {
         Returns: Json
       }
       release_tick_lock: { Args: never; Returns: undefined }
+      rename_cell: {
+        Args: { p_cell_id: string; p_name: string }
+        Returns: undefined
+      }
+      rename_territory: {
+        Args: { p_nickname: string; p_territory_id: string }
+        Returns: undefined
+      }
+      unmerge_cell: { Args: { p_absorbed_cell_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
