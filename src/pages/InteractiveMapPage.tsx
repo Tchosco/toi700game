@@ -287,11 +287,13 @@ export default function InteractiveMapPage() {
                   })}
 
                   {/* Cells (only when a region is selected) */}
-                  {selectedShape && selectedCells.map(cell => {
-                    const { x, y } = pointForCell(cell.id, selectedShape.bbox);
-                    const { color, label } = colorForCell(cell);
-                    const radius = cell.area_km2 ? Math.max(3, Math.min(7, Math.sqrt(cell.area_km2) / 12)) : 4;
-                    return (
+                  {selectedShape && (() => {
+                    const side = Math.max(1, Math.ceil(Math.sqrt(selectedCells.length)));
+                    return selectedCells.map(cell => {
+                      const { x, y } = pointForCell(cell, selectedShape.bbox, side);
+                      const { color, label } = colorForCell(cell);
+                      const radius = cell.area_km2 ? Math.max(3, Math.min(7, Math.sqrt(cell.area_km2) / 12)) : 4;
+                      return (
                       <Tooltip key={cell.id}>
                         <TooltipTrigger asChild>
                           <Link to={`/celulas/${cell.id}`}>
