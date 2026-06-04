@@ -172,6 +172,38 @@ Deno.serve(async (req) => {
       const offerData = lockedDeal.offer as TradeSide;
       const requestData = lockedDeal.request as TradeSide;
 
+      // Verify offered cells still belong to the proposer
+      if (offerData.cells?.length) {
+        const { data: offerCells } = await supabase
+          .from('cells')
+          .select('id, owner_territory_id')
+          .in('id', offerData.cells);
+        for (const c of offerCells || []) {
+          if (c.owner_territory_id !== lockedDeal.from_territory_id) {
+            await supabase.from('trade_deals').update({ status: 'proposed' }).eq('id', deal_id);
+            return new Response(JSON.stringify({ error: 'Offered cell no longer owned by proposer' }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+
+      // Verify requested cells belong to the recipient (prevents stealing third-party cells)
+      if (requestData.cells?.length) {
+        const { data: reqCells } = await supabase
+          .from('cells')
+          .select('id, owner_territory_id')
+          .in('id', requestData.cells);
+        for (const c of reqCells || []) {
+          if (c.owner_territory_id !== lockedDeal.to_territory_id) {
+            await supabase.from('trade_deals').update({ status: 'proposed' }).eq('id', deal_id);
+            return new Response(JSON.stringify({ error: 'Requested cell not owned by recipient' }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+
       console.log('[execute-trade-deal] Executing atomic trade...');
 
       try {
