@@ -2499,11 +2499,13 @@ export type Database = {
           id: string
           is_neutral: boolean
           is_npc: boolean
+          is_villain: boolean
           level: Database["public"]["Enums"]["territory_level"]
           lore: string | null
           motto: string | null
           name: string
           npc_description: string | null
+          npc_kind: string | null
           official_color: string | null
           owner_id: string | null
           pd_points: number
@@ -2532,11 +2534,13 @@ export type Database = {
           id?: string
           is_neutral?: boolean
           is_npc?: boolean
+          is_villain?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
           motto?: string | null
           name: string
           npc_description?: string | null
+          npc_kind?: string | null
           official_color?: string | null
           owner_id?: string | null
           pd_points?: number
@@ -2565,11 +2569,13 @@ export type Database = {
           id?: string
           is_neutral?: boolean
           is_npc?: boolean
+          is_villain?: boolean
           level?: Database["public"]["Enums"]["territory_level"]
           lore?: string | null
           motto?: string | null
           name?: string
           npc_description?: string | null
+          npc_kind?: string | null
           official_color?: string | null
           owner_id?: string | null
           pd_points?: number
