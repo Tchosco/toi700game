@@ -60,6 +60,7 @@ import MissionsPage from "./pages/MissionsPage";
 import TechTreePage from "./pages/TechTreePage";
 import PlanetPage from "./pages/PlanetPage";
 import DynamicMapPage from "./pages/DynamicMapPage";
+import InteractiveMapPage from "./pages/InteractiveMapPage";
 import RankingsPage from "./pages/RankingsPage";
 import InfrastructureNationalPage from "./pages/InfrastructureNationalPage";
 import InfrastructureCellPage from "./pages/InfrastructureCellPage";
@@ -95,6 +96,7 @@ const App = () => (
               <Route path="/suprema-corte" element={<SupremeCourtPage />} />
               <Route path="/regime" element={<RegimePage />} />
               <Route path="/mapa-politico" element={<PoliticalMapPage />} />
+              <Route path="/mapa-interativo" element={<InteractiveMapPage />} />
               <Route path="/noticias" element={<NewsPortalPage />} />
               <Route path="/noticias/:id" element={<NewsArticlePage />} />
               <Route path="/meu-jornal" element={<MyNewspaperPage />} />

@@ -15,6 +15,7 @@ const navLinks = [
   { to: '/', label: 'Início', icon: Globe },
   { to: '/mapa', label: 'Mapa', icon: Map },
   { to: '/mapa-politico', label: 'Mapa Político', icon: Globe2 },
+  { to: '/mapa-interativo', label: 'Mapa TOI-700', icon: Globe2 },
   { to: '/celulas', label: 'Células', icon: Grid3X3 },
   { to: '/populacao', label: 'População', icon: Users },
   { to: '/mercado', label: 'Mercado', icon: TrendingUp },
