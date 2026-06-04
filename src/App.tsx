@@ -92,6 +92,7 @@ const App = () => (
               <Route path="/constituicao" element={<ConstitutionPage />} />
               <Route path="/parlamento" element={<ParliamentPage />} />
               <Route path="/suprema-corte" element={<SupremeCourtPage />} />
+              <Route path="/regime" element={<RegimePage />} />
               <Route path="/noticias" element={<NewsPortalPage />} />
               <Route path="/noticias/:id" element={<NewsArticlePage />} />
               <Route path="/meu-jornal" element={<MyNewspaperPage />} />
