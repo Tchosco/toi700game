@@ -85,6 +85,38 @@ export type Database = {
           },
         ]
       }
+      article_reactions: {
+        Row: {
+          article_id: string
+          created_at: string
+          id: string
+          reaction: string
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          id?: string
+          reaction: string
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          id?: string
+          reaction?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_reactions_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "news_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bloc_memberships: {
         Row: {
           bloc_id: string
@@ -1298,6 +1330,116 @@ export type Database = {
           name?: string
           objectives?: Json
           rewards?: Json
+        }
+        Relationships: []
+      }
+      news_articles: {
+        Row: {
+          author_user_id: string
+          body: string
+          category: string
+          cover_image_url: string | null
+          created_at: string
+          dislikes_count: number
+          id: string
+          is_featured: boolean
+          lead: string | null
+          likes_count: number
+          newspaper_id: string
+          published_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          views_count: number
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          category?: string
+          cover_image_url?: string | null
+          created_at?: string
+          dislikes_count?: number
+          id?: string
+          is_featured?: boolean
+          lead?: string | null
+          likes_count?: number
+          newspaper_id: string
+          published_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          views_count?: number
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          category?: string
+          cover_image_url?: string | null
+          created_at?: string
+          dislikes_count?: number
+          id?: string
+          is_featured?: boolean
+          lead?: string | null
+          likes_count?: number
+          newspaper_id?: string
+          published_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          views_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_articles_newspaper_id_fkey"
+            columns: ["newspaper_id"]
+            isOneToOne: false
+            referencedRelation: "newspapers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      newspapers: {
+        Row: {
+          created_at: string
+          editorial_line: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          owner_user_id: string
+          slogan: string | null
+          territory_id: string
+          total_articles: number
+          total_views: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          editorial_line?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          owner_user_id: string
+          slogan?: string | null
+          territory_id: string
+          total_articles?: number
+          total_views?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          editorial_line?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          owner_user_id?: string
+          slogan?: string | null
+          territory_id?: string
+          total_articles?: number
+          total_views?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3439,6 +3581,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_article_views: {
+        Args: { _article_id: string }
+        Returns: undefined
       }
       match_market_order: {
         Args: {
