@@ -3424,6 +3424,9 @@ export type Database = {
         | "era_change"
         | "bloc_charter"
         | "bloc_law"
+        | "justice_election"
+        | "supreme_court_ruling"
+        | "amendment"
       war_game_status: "declared" | "ongoing" | "resolved"
       war_status: "declared" | "active" | "ceasefire" | "ended"
     }
@@ -3678,6 +3681,9 @@ export const Constants = {
         "era_change",
         "bloc_charter",
         "bloc_law",
+        "justice_election",
+        "supreme_court_ruling",
+        "amendment",
       ],
       war_game_status: ["declared", "ongoing", "resolved"],
       war_status: ["declared", "active", "ceasefire", "ended"],
