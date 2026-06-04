@@ -39,6 +39,7 @@ const diplomacyLinks = [
 const stateLinks = [
   { to: '/customizacao', label: 'Customização', icon: Palette },
   { to: '/territorios', label: 'Territórios', icon: Building2 },
+  { to: '/meu-jornal', label: 'Meu Jornal', icon: Newspaper },
 ];
 
 export function Navbar() {
