@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X, Shield, LogIn, LogOut, TrendingUp, User, Grid3X3, Swords, Users, Scale, Gavel, Globe2, Crown, History, MessageCircle, Handshake, Lock, Scroll, Palette } from 'lucide-react';
+import { Globe, Map, BookOpen, PlusCircle, Building2, Menu, X, Shield, LogIn, LogOut, TrendingUp, User, Grid3X3, Swords, Users, Scale, Gavel, Globe2, Crown, History, MessageCircle, Handshake, Lock, Scroll, Palette, Newspaper } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ const navLinks = [
   { to: '/celulas', label: 'Células', icon: Grid3X3 },
   { to: '/populacao', label: 'População', icon: Users },
   { to: '/mercado', label: 'Mercado', icon: TrendingUp },
+  { to: '/noticias', label: 'Notícias', icon: Newspaper },
 ];
 
 const legalLinks = [
@@ -38,6 +39,7 @@ const diplomacyLinks = [
 const stateLinks = [
   { to: '/customizacao', label: 'Customização', icon: Palette },
   { to: '/territorios', label: 'Territórios', icon: Building2 },
+  { to: '/meu-jornal', label: 'Meu Jornal', icon: Newspaper },
 ];
 
 export function Navbar() {
