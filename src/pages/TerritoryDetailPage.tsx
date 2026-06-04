@@ -135,12 +135,10 @@ export default function TerritoryDetailPage() {
       return;
     }
 
-    // Fetch owner profile
-    const { data: profile } = await (supabase as any)
-      .from('public_profiles')
-      .select('username')
-      .eq('id', territoryData.owner_id)
-      .maybeSingle() as { data: { username: string } | null };
+    // Fetch owner profile via safe RPC
+    const { data: profileRows } = await (supabase as any)
+      .rpc('get_public_profile_basic', { p_user_ids: [territoryData.owner_id] }) as { data: { username: string }[] | null };
+    const profile = profileRows?.[0] ?? null;
 
     // Fetch region
     const { data: region } = await supabase
