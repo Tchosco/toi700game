@@ -3075,27 +3075,7 @@ export type Database = {
       }
     }
     Views: {
-      public_profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          id: string | null
-          username: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          id?: string | null
-          username?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          id?: string | null
-          username?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       acquire_tick_lock: { Args: never; Returns: boolean }
@@ -3188,6 +3168,15 @@ export type Database = {
       generate_region_cells: {
         Args: { p_num_cells?: number; p_region_id: string }
         Returns: number
+      }
+      get_public_profile_basic: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          id: string
+          username: string
+        }[]
       }
       has_role: {
         Args: {
