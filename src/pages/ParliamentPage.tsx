@@ -222,6 +222,68 @@ export default function ParliamentPage() {
               <p className="text-muted-foreground">Assembleia de todos os Estados de TOI-700</p>
             </div>
           </div>
+          {user && myTerritories.length > 0 && (
+            <Dialog open={propOpen} onOpenChange={setPropOpen}>
+              <DialogTrigger asChild>
+                <Button><PlusCircle className="h-4 w-4 mr-2" />Abrir Votação</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Nova votação planetária</DialogTitle>
+                  <DialogDescription>Submeta uma proposta à apreciação de todos os Estados</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div>
+                    <Label>Tipo</Label>
+                    <Select value={propType} onValueChange={setPropType}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="law">Lei Planetária</SelectItem>
+                        <SelectItem value="sanction">Sanção</SelectItem>
+                        <SelectItem value="justice_election">Eleição de Juiz da Suprema Corte</SelectItem>
+                        <SelectItem value="bloc_creation">Criação de Bloco</SelectItem>
+                        <SelectItem value="era_change">Mudança de Era</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Título</Label>
+                    <Input value={propTitle} onChange={e => setPropTitle(e.target.value)} maxLength={200} />
+                  </div>
+                  <div>
+                    <Label>Descrição</Label>
+                    <Textarea value={propDesc} onChange={e => setPropDesc(e.target.value)} rows={4} />
+                  </div>
+                  {propType === 'justice_election' && (
+                    <div>
+                      <Label>Território candidato</Label>
+                      <Select value={propSubject} onValueChange={setPropSubject}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          {allTerritories.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {propType === 'law' && (
+                    <div>
+                      <Label>ID da lei (opcional)</Label>
+                      <Input value={propSubject} onChange={e => setPropSubject(e.target.value)} placeholder="uuid da lei a ratificar" />
+                    </div>
+                  )}
+                  <div>
+                    <Label>Duração (dias): {propDuration}</Label>
+                    <Input type="number" min={1} max={14} value={propDuration} onChange={e => setPropDuration(Number(e.target.value))} />
+                  </div>
+                </div>
+                <Button className="w-full" onClick={handlePropose} disabled={proposing}>
+                  {proposing ? 'Abrindo...' : 'Abrir votação'}
+                </Button>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Parliament Stats */}
