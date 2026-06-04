@@ -1824,6 +1824,108 @@ export type Database = {
           },
         ]
       }
+      regime_profiles: {
+        Row: {
+          color: string
+          created_at: string
+          decree_label: string
+          description: string | null
+          display_name: string
+          economic_modifier: number
+          icon: string
+          id: string
+          influence_modifier: number
+          leader_title: string
+          military_modifier: number
+          national_law_label: string
+          parliament_name: string
+          regime: Database["public"]["Enums"]["government_type"]
+          stability_modifier: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          decree_label?: string
+          description?: string | null
+          display_name: string
+          economic_modifier?: number
+          icon?: string
+          id?: string
+          influence_modifier?: number
+          leader_title?: string
+          military_modifier?: number
+          national_law_label?: string
+          parliament_name?: string
+          regime: Database["public"]["Enums"]["government_type"]
+          stability_modifier?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          decree_label?: string
+          description?: string | null
+          display_name?: string
+          economic_modifier?: number
+          icon?: string
+          id?: string
+          influence_modifier?: number
+          leader_title?: string
+          military_modifier?: number
+          national_law_label?: string
+          parliament_name?: string
+          regime?: Database["public"]["Enums"]["government_type"]
+          stability_modifier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      regime_transitions: {
+        Row: {
+          created_at: string
+          executed_at: string | null
+          from_regime: Database["public"]["Enums"]["government_type"]
+          id: string
+          initiated_by: string
+          method: string
+          parliamentary_vote_id: string | null
+          rationale: string | null
+          status: string
+          territory_id: string
+          to_regime: Database["public"]["Enums"]["government_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          executed_at?: string | null
+          from_regime: Database["public"]["Enums"]["government_type"]
+          id?: string
+          initiated_by: string
+          method?: string
+          parliamentary_vote_id?: string | null
+          rationale?: string | null
+          status?: string
+          territory_id: string
+          to_regime: Database["public"]["Enums"]["government_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          executed_at?: string | null
+          from_regime?: Database["public"]["Enums"]["government_type"]
+          id?: string
+          initiated_by?: string
+          method?: string
+          parliamentary_vote_id?: string | null
+          rationale?: string | null
+          status?: string
+          territory_id?: string
+          to_regime?: Database["public"]["Enums"]["government_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       regions: {
         Row: {
           created_at: string
@@ -3545,6 +3647,10 @@ export type Database = {
         Returns: undefined
       }
       check_law_conflicts: { Args: { p_law_id: string }; Returns: Json }
+      execute_regime_transition: {
+        Args: { p_transition_id: string }
+        Returns: undefined
+      }
       file_supreme_court_case: {
         Args: {
           _case_type: string
@@ -3566,6 +3672,13 @@ export type Database = {
         Args: { p_num_cells?: number; p_region_id: string }
         Returns: number
       }
+      get_law_label: {
+        Args: {
+          p_legal_level: Database["public"]["Enums"]["legal_level"]
+          p_territory_id: string
+        }
+        Returns: string
+      }
       get_public_profile_basic: {
         Args: { p_user_ids: string[] }
         Returns: {
@@ -3585,6 +3698,15 @@ export type Database = {
       increment_article_views: {
         Args: { _article_id: string }
         Returns: undefined
+      }
+      initiate_regime_change: {
+        Args: {
+          p_method?: string
+          p_rationale?: string
+          p_territory_id: string
+          p_to_regime: Database["public"]["Enums"]["government_type"]
+        }
+        Returns: string
       }
       match_market_order: {
         Args: {
