@@ -1986,6 +1986,147 @@ export type Database = {
           },
         ]
       }
+      supreme_court_cases: {
+        Row: {
+          case_number: number
+          case_type: string
+          created_at: string
+          filed_at: string
+          id: string
+          plaintiff_territory_id: string | null
+          plaintiff_user_id: string
+          rationale: string
+          result: string | null
+          ruling_at: string | null
+          status: string
+          target_law_id: string | null
+          target_territory_id: string | null
+          title: string
+          updated_at: string
+          votes_abstain: number
+          votes_no: number
+          votes_yes: number
+        }
+        Insert: {
+          case_number?: number
+          case_type: string
+          created_at?: string
+          filed_at?: string
+          id?: string
+          plaintiff_territory_id?: string | null
+          plaintiff_user_id: string
+          rationale: string
+          result?: string | null
+          ruling_at?: string | null
+          status?: string
+          target_law_id?: string | null
+          target_territory_id?: string | null
+          title: string
+          updated_at?: string
+          votes_abstain?: number
+          votes_no?: number
+          votes_yes?: number
+        }
+        Update: {
+          case_number?: number
+          case_type?: string
+          created_at?: string
+          filed_at?: string
+          id?: string
+          plaintiff_territory_id?: string | null
+          plaintiff_user_id?: string
+          rationale?: string
+          result?: string | null
+          ruling_at?: string | null
+          status?: string
+          target_law_id?: string | null
+          target_territory_id?: string | null
+          title?: string
+          updated_at?: string
+          votes_abstain?: number
+          votes_no?: number
+          votes_yes?: number
+        }
+        Relationships: []
+      }
+      supreme_court_justices: {
+        Row: {
+          created_at: string
+          elected_at: string | null
+          id: string
+          seat_number: number
+          status: string
+          term_ends_at: string | null
+          territory_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          elected_at?: string | null
+          id?: string
+          seat_number: number
+          status?: string
+          term_ends_at?: string | null
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          elected_at?: string | null
+          id?: string
+          seat_number?: number
+          status?: string
+          term_ends_at?: string | null
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      supreme_court_votes: {
+        Row: {
+          case_id: string
+          created_at: string
+          id: string
+          justice_id: string
+          opinion: string | null
+          vote: string
+          voter_user_id: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          id?: string
+          justice_id: string
+          opinion?: string | null
+          vote: string
+          voter_user_id: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          id?: string
+          justice_id?: string
+          opinion?: string | null
+          vote?: string
+          voter_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supreme_court_votes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "supreme_court_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supreme_court_votes_justice_id_fkey"
+            columns: ["justice_id"]
+            isOneToOne: false
+            referencedRelation: "supreme_court_justices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       technologies: {
         Row: {
           category: Database["public"]["Enums"]["tech_category"]
@@ -3257,8 +3398,24 @@ export type Database = {
         Args: { p_amendment_id: string; p_vote: string }
         Returns: Json
       }
+      cast_justice_vote: {
+        Args: { _case_id: string; _opinion?: string; _vote: string }
+        Returns: undefined
+      }
       check_law_conflicts: { Args: { p_law_id: string }; Returns: Json }
+      file_supreme_court_case: {
+        Args: {
+          _case_type: string
+          _rationale: string
+          _target_law_id?: string
+          _target_territory_id?: string
+          _title: string
+        }
+        Returns: string
+      }
       finalize_amendment: { Args: { p_amendment_id: string }; Returns: Json }
+      finalize_parliamentary_vote: { Args: { _vote_id: string }; Returns: Json }
+      finalize_supreme_court_case: { Args: { _case_id: string }; Returns: Json }
       generate_populated_cells: {
         Args: { p_num_cells?: number; p_region_id: string }
         Returns: number
@@ -3299,6 +3456,16 @@ export type Database = {
           remaining_quantity: number
           trades_executed: number
         }[]
+      }
+      open_planetary_vote: {
+        Args: {
+          _description: string
+          _duration_days?: number
+          _subject_id?: string
+          _title: string
+          _vote_type: Database["public"]["Enums"]["vote_type"]
+        }
+        Returns: string
       }
       propose_amendment: {
         Args: {
@@ -3424,6 +3591,9 @@ export type Database = {
         | "era_change"
         | "bloc_charter"
         | "bloc_law"
+        | "justice_election"
+        | "supreme_court_ruling"
+        | "amendment"
       war_game_status: "declared" | "ongoing" | "resolved"
       war_status: "declared" | "active" | "ceasefire" | "ended"
     }
@@ -3678,6 +3848,9 @@ export const Constants = {
         "era_change",
         "bloc_charter",
         "bloc_law",
+        "justice_election",
+        "supreme_court_ruling",
+        "amendment",
       ],
       war_game_status: ["declared", "ongoing", "resolved"],
       war_status: ["declared", "active", "ceasefire", "ended"],

@@ -12,7 +12,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Vote, CheckCircle, XCircle, Minus, Clock, Gavel } from 'lucide-react';
+import { Users, Vote, CheckCircle, XCircle, Minus, Clock, Gavel, PlusCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 interface Territory {
@@ -58,6 +59,39 @@ export default function ParliamentPage() {
   const [voteChoice, setVoteChoice] = useState<string>('');
   const [voteReason, setVoteReason] = useState('');
   const [voting, setVoting] = useState(false);
+
+  // Propose vote
+  const [propTitle, setPropTitle] = useState('');
+  const [propDesc, setPropDesc] = useState('');
+  const [propType, setPropType] = useState<string>('law');
+  const [propSubject, setPropSubject] = useState('');
+  const [propDuration, setPropDuration] = useState(5);
+  const [propOpen, setPropOpen] = useState(false);
+  const [proposing, setProposing] = useState(false);
+
+  const handlePropose = async () => {
+    if (!propTitle.trim()) { toast.error('Título obrigatório'); return; }
+    setProposing(true);
+    const { error } = await supabase.rpc('open_planetary_vote', {
+      _title: propTitle,
+      _description: propDesc,
+      _vote_type: propType as any,
+      _subject_id: propSubject || null,
+      _duration_days: propDuration,
+    });
+    setProposing(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Votação aberta');
+    setPropOpen(false); setPropTitle(''); setPropDesc(''); setPropSubject('');
+    fetchData();
+  };
+
+  const handleFinalize = async (id: string) => {
+    const { error } = await supabase.rpc('finalize_parliamentary_vote', { _vote_id: id });
+    if (error) { toast.error(error.message); return; }
+    toast.success('Votação encerrada');
+    fetchData();
+  };
 
   useEffect(() => {
     fetchData();
@@ -188,6 +222,68 @@ export default function ParliamentPage() {
               <p className="text-muted-foreground">Assembleia de todos os Estados de TOI-700</p>
             </div>
           </div>
+          {user && myTerritories.length > 0 && (
+            <Dialog open={propOpen} onOpenChange={setPropOpen}>
+              <DialogTrigger asChild>
+                <Button><PlusCircle className="h-4 w-4 mr-2" />Abrir Votação</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Nova votação planetária</DialogTitle>
+                  <DialogDescription>Submeta uma proposta à apreciação de todos os Estados</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div>
+                    <Label>Tipo</Label>
+                    <Select value={propType} onValueChange={setPropType}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="law">Lei Planetária</SelectItem>
+                        <SelectItem value="sanction">Sanção</SelectItem>
+                        <SelectItem value="justice_election">Eleição de Juiz da Suprema Corte</SelectItem>
+                        <SelectItem value="bloc_creation">Criação de Bloco</SelectItem>
+                        <SelectItem value="era_change">Mudança de Era</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Título</Label>
+                    <Input value={propTitle} onChange={e => setPropTitle(e.target.value)} maxLength={200} />
+                  </div>
+                  <div>
+                    <Label>Descrição</Label>
+                    <Textarea value={propDesc} onChange={e => setPropDesc(e.target.value)} rows={4} />
+                  </div>
+                  {propType === 'justice_election' && (
+                    <div>
+                      <Label>Território candidato</Label>
+                      <Select value={propSubject} onValueChange={setPropSubject}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          {allTerritories.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {propType === 'law' && (
+                    <div>
+                      <Label>ID da lei (opcional)</Label>
+                      <Input value={propSubject} onChange={e => setPropSubject(e.target.value)} placeholder="uuid da lei a ratificar" />
+                    </div>
+                  )}
+                  <div>
+                    <Label>Duração (dias): {propDuration}</Label>
+                    <Input type="number" min={1} max={14} value={propDuration} onChange={e => setPropDuration(Number(e.target.value))} />
+                  </div>
+                </div>
+                <Button className="w-full" onClick={handlePropose} disabled={proposing}>
+                  {proposing ? 'Abrindo...' : 'Abrir votação'}
+                </Button>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Parliament Stats */}
@@ -283,6 +379,12 @@ export default function ParliamentPage() {
                         <span>Encerra: {new Date(vote.voting_ends_at).toLocaleString('pt-BR')}</span>
                       </div>
 
+                      <div className="flex gap-2">
+                      {new Date(vote.voting_ends_at) < new Date() && (
+                        <Button variant="outline" size="sm" onClick={() => handleFinalize(vote.id)}>
+                          Apurar
+                        </Button>
+                      )}
                       {user && myTerritories.length > 0 && (
                         <Dialog>
                           <DialogTrigger asChild>
@@ -357,6 +459,7 @@ export default function ParliamentPage() {
                           </DialogContent>
                         </Dialog>
                       )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

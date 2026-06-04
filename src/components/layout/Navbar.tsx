@@ -22,6 +22,7 @@ const navLinks = [
 const legalLinks = [
   { to: '/constituicao', label: 'Constituição', icon: Scale },
   { to: '/parlamento', label: 'Parlamento', icon: Gavel },
+  { to: '/suprema-corte', label: 'Suprema Corte', icon: Scale },
   { to: '/blocos', label: 'Blocos', icon: Globe2 },
   { to: '/leis', label: 'Minhas Leis', icon: Crown },
   { to: '/historico-legal', label: 'Histórico', icon: History },

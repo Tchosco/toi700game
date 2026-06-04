@@ -18,6 +18,7 @@ import DiplomacyPage from "./pages/DiplomacyPage";
 import PopulationPage from "./pages/PopulationPage";
 import ConstitutionPage from "./pages/ConstitutionPage";
 import ParliamentPage from "./pages/ParliamentPage";
+import SupremeCourtPage from "./pages/SupremeCourtPage";
 import BlocsPage from "./pages/BlocsPage";
 import StateLawsPage from "./pages/StateLawsPage";
 import CreateLawPage from "./pages/CreateLawPage";
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="/populacao" element={<PopulationPage />} />
               <Route path="/constituicao" element={<ConstitutionPage />} />
               <Route path="/parlamento" element={<ParliamentPage />} />
+              <Route path="/suprema-corte" element={<SupremeCourtPage />} />
               <Route path="/blocos" element={<BlocsPage />} />
               <Route path="/leis" element={<StateLawsPage />} />
               <Route path="/leis/criar" element={<CreateLawPage />} />
